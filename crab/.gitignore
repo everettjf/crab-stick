@@ -1,0 +1,13 @@
+bridge/node_modules/
+bridge/dist/
+bridge/.env
+bridge/data/
+firmware/build/
+firmware/managed_components/
+firmware/sdkconfig
+firmware/sdkconfig.old
+firmware/local.defaults
+avatar/previews/
+backups/
+tools/__pycache__/
+tools/.venv/
