@@ -1,0 +1,41 @@
+name: Publish Crab website
+on:
+  push:
+    branches: [main]
+    paths:
+      ["web/**", ".github/workflows/pages.yml", ".github/scripts/check_web.py"]
+  pull_request:
+    paths:
+      ["web/**", ".github/workflows/pages.yml", ".github/scripts/check_web.py"]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: crab-pages-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: python3 .github/scripts/check_web.py
+      - run: node --check web/app.js
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: check
+    permissions:
+      pages: write
+      id-token: write
+      contents: read
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: web
+      - uses: actions/deploy-pages@v4
+        id: deployment

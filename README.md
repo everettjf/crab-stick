@@ -14,81 +14,126 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# Crab 🦀 · StickS3 随身语音助手
+# Crab 🦀 — your StickS3 voice companion
 
-基于 M5Stack StickS3 的独立固件，搭配电脑端 Pi SDK 桥接服务：按住说话，松开后显示中文字幕并播放回复。无需 Muse 账号、SDK token 或订阅。电脑端自带浏览器控制台，可查看设备状态、实时对话与错误日志，切换模型并调整语音设置。
+Hold to talk. Release to listen. An independent M5Stack StickS3 firmware with an animated crab, on-device captions, voice replies and a browser console powered by the Pi SDK on your computer.
 
-已在实机确认螃蟹动画、中文识别、DeepSeek 回复、字幕与语音播放。当前验证组合是 **StickS3 + macOS + faster-whisper + Pi + DeepSeek + 系统中文 TTS**；电池续航与长时间稳定性仍待测量。
+**No Muse account, SDK token or subscription required.** You choose the model and speech services; cloud model usage follows the provider's pricing.
 
-- [中文上手指南](crab/QUICKSTART.zh-CN.md)：安装、备份、烧录、配置和日常使用。
-- [Crab 技术说明](crab/README.md)：架构、按钮操作、模型与语音适配、协议。
-- [实机验收记录](crab/VALIDATION.md)：已通过的测试和剩余限制。
+[Project website](https://xnu.app/muse-gadget-sdk/) · [中文使用指南](crab/QUICKSTART.zh-CN.md) · [Technical guide](crab/README.md) · [Hardware validation](crab/VALIDATION.md)
 
-所有新增实现位于 [`crab/`](crab/)，复用上游板级驱动、音频与字体。下面保留原 Muse SDK 的介绍；其中账号、配对和订阅要求适用于上游 Muse 应用。
+## What runs where?
 
----
+```text
+StickS3: hold button → record → Wi-Fi → computer bridge
+Computer: speech recognition → Pi / model → speech synthesis
+StickS3: animated crab + reply captions + spoken response
+Browser: device status, live conversation, errors and settings
+```
 
-# Muse Gadgets — upstream SDK
+The verified setup is **StickS3 + macOS + local faster-whisper + Pi / DeepSeek + macOS TTS**. Model credentials stay on the computer. Other speech APIs and local model endpoints can be configured; the bundled macOS speech adapter requires macOS.
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset=".github/images/muse-gadgets-dark.png">
-    <img src=".github/images/muse-gadgets-light.png" width="900" alt="Muse gadgets: a Waveshare round AMOLED, an M5Stack StickS3, Muse Home Link, a Raspberry Pi and a Seeed reTerminal e-ink display">
-  </picture>
-</p>
+## Already configured? Use it in three steps
 
-Muse gadgets are open source devices you build yourself. Program an
-off-the-shelf ESP32 board or set up a Raspberry Pi with our device SDKs, then
-connect Muse to your displays, buttons, sensors, actuators, and whatever else
-you've got lying on your workbench.
+1. **Start the bridge** from this repository's root:
 
-We open sourced the SDKs and firmware here. It's built by hackers, for hackers,
-just for fun. Side effects of tinkering may include bricked boards, voided
-warranties, brownouts, or bankruptcies. Proceed at your own risk!
+   ```sh
+   cd crab/bridge
+   npm start
+   ```
 
-| | |
-|---|---|
-| [**ESP32 Device SDK**](esp32) | Connect your ESP32 board to Muse through our open source SDK. Throw in a screen to show images, add audio in and out, or wire up other sensors. |
-| [**Linux Device SDK**](linux) | Turn that spare Raspberry Pi or Linux box into a Muse gadget. Hack in your own commands to let Muse handle sysadmin chores or your Home Assistant setup. |
+   Keep this terminal running and your computer awake. After source changes, run `npm run build` before starting. The device must reach the computer's LAN IP on the same reachable network.
 
-Before you flash or pair a gadget, get an
-[SDK token](https://gadgets.muse.ai/settings/sdk-tokens) and review the
-[Gadget SDK Terms](https://gadgets.muse.ai/sdk-terms). Every gadget needs a
-token to pair.
+2. **Open [the local console](http://127.0.0.1:8787/)** on the computer. Sign in with `CRAB_TOKEN` from your private `crab/bridge/.env`. The interface defaults to English; use **中文 / English** in the header to switch.
 
-ESP32 and Linux gadgets pair with the Muse app on iOS and Android, via
-Settings > Devices. Turn on Developer mode there first, then look for devices
-prefixed with "MuseGadget".
-Each directory has a `README.md` to get started and an `AGENTS.md` for coding
-agents like [Muse Code](https://developer.meta.com/ai/lp/muse-code/).
+3. **Hold the front button and speak**, then release. Try “你好，你是谁”. You should see the recognized text, reply captions and hear the answer. The browser shows the same conversation and any processing errors.
 
-For battery-input power profiling, see the [porting recipe](esp32/docs/power/README.md).
-The opt-in diagnostic core is board-neutral; boards supply its hooks and state
-matrices, and [power_sweep.py](esp32/tools/power/power_sweep.py) drives the
-USB-free sweep. The isolated diagnostic does not pair or need an SDK token;
-fixture safety and explicit hardware authorization still come first, as the
-[PPK2 rules](esp32/docs/power/ppk2.md) describe.
+The public project website explains setup; it is separate from your local console and does not access your device.
 
-## Community
+## First installation
 
-Meet other hackers who are building and customizing Muse gadgets in our
-community [Discord](https://discord.gg/3bhjCkZdd6). Get inspired, support each
-other, and share what you make.
+Prepare a StickS3, a USB data cable, reachable 2.4 GHz Wi-Fi, Node.js **≥22.19**, Python 3 and ESP-IDF **6.0.1**. The verified local speech path uses macOS.
 
-## License
+```sh
+git clone https://github.com/everettjf/muse-gadget-sdk.git
+cd muse-gadget-sdk/crab/bridge
+npm ci --ignore-scripts
+npm run build
+npm test
+cp -n .env.example .env
+```
 
-Muse Gadgets is licensed under the Apache License, Version 2.0, found in
-[`LICENSE`](LICENSE), except for these third-party files, which keep their
-upstream licenses:
+Then follow these steps in order:
 
-| Path | Upstream | License |
+| Step | What to do | Instructions |
 |---|---|---|
-| [`esp32/components/minimp3/include/minimp3.h`](esp32/components/minimp3) | [lieff/minimp3](https://github.com/lieff/minimp3) | CC0-1.0, see [`LICENSE`](esp32/components/minimp3/LICENSE) |
-| [`esp32/components/muse/boards/ostb_echoear_display_init.h`](esp32/components/muse/boards/ostb_echoear_display_init.h) | [78/xiaozhi-esp32 ESP-VoCat panel sequence](https://github.com/78/xiaozhi-esp32/blob/0d576d3d4c049c6f55eaf879725dc23e516511b4/main/boards/espressif/esp-vocat/esp_vocat.cc) | MIT, retained in the file header |
-| [`esp32/main/pixel_font.c`](esp32/main/pixel_font.c) | Adafruit GFX `glcdfont.c` | BSD-2-Clause, in the file header |
+| 1. Computer configuration | Generate a 32–128 character shared token, set `CRAB_HOST=0.0.0.0` and start with `CRAB_DEMO=true`. | [Bridge setup](crab/README.md#1-start-the-computer-bridge) |
+| 2. Model and speech | Run `python3 ../tools/setup_deepseek.py` for DeepSeek, or configure another Pi provider. Install local STT and configure STT/TTS command paths in `.env`. | [Model and speech adapters](crab/README.md#2-configure-pi-and-real-audio) |
+| 3. Back up and flash | Save the full 8 MiB original flash and SHA256 before flashing the standalone firmware. Keep the backup private. | [Backup, flash and recovery](crab/README.md#3-build-back-up-and-flash) |
+| 4. Device configuration | Over USB, enter Wi-Fi details, `http://COMPUTER_LAN_IP:8787` and the same token. Do not use `localhost` as the device URL. | [USB configuration](crab/README.md#4-configure-over-usb) |
+| 5. Test a real turn | Confirm demo captions/tone, set `CRAB_DEMO=false`, restart the bridge and test recognition, captions and audio. | [完整中文步骤](crab/QUICKSTART.zh-CN.md) |
 
-Dependencies fetched at build time are under their own licenses: ESP-IDF
-components (into `esp32/managed_components/`), and the simulator's LVGL and
-SDL (listed in [`esp32/simulator/THIRD_PARTY.md`](esp32/simulator/THIRD_PARTY.md)).
+Do not commit API keys, `.env`, flash backups or saved recordings. These local paths are ignored by Git.
 
-The Apache License does not cover the [Jollybot avatar](esp32/avatar).
+## Buttons
+
+| Action | Result |
+|---|---|
+| Hold front, then release | Record and send, up to 20 seconds |
+| Press front during processing/playback | Cancel; wait for cancellation before starting again |
+| Short press side | Page through captions and trigger the happy animation |
+| Hold side for 3 seconds while idle | Power down; battery-only wake remains to be verified |
+
+## Browser console
+
+Open **http://127.0.0.1:8787/** while the bridge is running:
+
+- See device heartbeats, battery/USB supply, mode and uptime.
+- Follow transcripts, streamed replies, processing times and errors.
+- Select a configured Pi model and adjust supported recognition/voice settings.
+- Switch the UI between English and Chinese without changing recognition language.
+
+Settings apply to the next turn and persist locally. Saving is blocked during active turns. Switching models clears conversation context; speech-only changes preserve it. See [console details](crab/README.md#browser-console).
+
+## If something does not work
+
+| Symptom | First check |
+|---|---|
+| Connection failed / timed out | Bridge running, computer awake, Wi-Fi reachable, correct computer LAN IP and port in device settings |
+| Transcript but no reply | Model credentials and errors in the console / bridge terminal |
+| Reply text but no sound | TTS command/API and an installed supported voice |
+| USB connection or flashing failure | Correct data cable/port; close other serial monitors |
+
+If the computer's IP changes, update the device URL over USB. Detailed recovery instructions are in the [technical guide](crab/README.md).
+
+## Status and limits
+
+Real hardware has passed Chinese push-to-talk recognition, captions, spoken replies, cancellation, Wi-Fi reconnection and heartbeat checks. The bridge has 17 Node tests plus two Python serial tests. [Validation records](crab/VALIDATION.md) distinguish verified behavior from remaining work.
+
+- The computer must remain available. Transport is trusted-LAN HTTP; do not forward its port to the internet.
+- This version chats and answers questions. It has no reminder, persistent note, file or home-control tools.
+- Conversations and error history are in memory and clear when the bridge restarts.
+- Battery runtime, battery-only wake and long-duration stability still need measurement.
+
+## Repository map
+
+| Path | Purpose |
+|---|---|
+| [`crab/firmware/`](crab/firmware/) | Standalone ESP-IDF StickS3 firmware |
+| [`crab/bridge/`](crab/bridge/) | Pi bridge, speech adapters and authenticated local browser console |
+| [`crab/avatar/`](crab/avatar/) | Original animated crab |
+| [`crab/tools/`](crab/tools/) | USB setup, backup/restore and hardware checks |
+| [`web/`](web/) | Public GitHub Pages project website; deployed from `main` |
+| [`esp32/`](esp32/) / [`linux/`](linux/) | Original upstream Muse SDKs |
+
+## Website development
+
+```sh
+python3 -m http.server 8080 --directory web
+```
+
+Open http://127.0.0.1:8080/. The [Pages workflow](.github/workflows/pages.yml) checks and publishes only `web/` on pushes to `main`. No website build or npm install is needed. See [website maintenance](web/README.md).
+
+## License and upstream
+
+Original Crab code and its avatar are [MIT](crab/LICENSE). Reused upstream files retain their original licenses. The original Muse SDK documentation, community links and third-party attribution are preserved in [README.upstream.md](README.upstream.md). Upstream Muse pairing/token requirements apply to those original applications.

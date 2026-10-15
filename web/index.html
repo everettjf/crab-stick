@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      name="description"
+      content="Crab is an independent voice companion for M5Stack StickS3, powered by your computer and Pi. Setup, controls and documentation."
+    />
+    <title>Crab — A little companion, on your terms.</title>
+    <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./style.css" />
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <header class="nav wrap">
+      <a class="brand" href="#home"
+        ><img
+          src="./assets/favicon.svg"
+          alt=""
+          width="32"
+          height="32"
+        />Crab<span>STICKS3 COMPANION</span></a
+      >
+      <nav aria-label="Main navigation">
+        <a href="#how" data-zh="如何工作">How it works</a
+        ><a href="#start" data-zh="开始使用">Get started</a
+        ><a
+          href="https://github.com/everettjf/muse-gadget-sdk"
+          target="_blank"
+          rel="noreferrer"
+          >GitHub ↗</a
+        ><button id="locale" aria-label="Switch to Chinese">中文</button>
+      </nav>
+    </header>
+    <main id="home">
+      <section class="hero wrap">
+        <div class="hero-copy">
+          <p class="eyebrow" data-zh="你的设备。你的模型。">
+            YOUR DEVICE. YOUR MODELS.
+          </p>
+          <h1 data-zh="一只小螃蟹，\n随时听你说。">
+            A little companion,\non your terms.
+          </h1>
+          <p
+            class="lead"
+            data-zh="按住说话，松开聆听。让 StickS3 变成你的随身语音助手，由电脑上的 Pi 驱动。"
+          >
+            Hold to talk. Release to listen. Turn your StickS3 into a pocket
+            voice companion, powered by Pi on your computer.
+          </p>
+          <div class="actions">
+            <a class="button primary" href="#start" data-zh="开始使用 →"
+              >Meet your Crab →</a
+            ><a
+              class="button"
+              href="https://github.com/everettjf/muse-gadget-sdk/tree/main/crab"
+              data-zh="查看代码 ↗"
+              >Explore the code ↗</a
+            >
+          </div>
+          <p
+            class="hero-note"
+            data-zh="无需 Muse 账号或订阅 · 模型和语音由你选择"
+          >
+            No Muse account or subscription · Your choice of model and speech
+          </p>
+        </div>
+        <div
+          class="hero-art"
+          aria-label="Illustration of Crab running on a StickS3"
+        >
+          <div class="orbit orbit-one"></div>
+          <div class="orbit orbit-two"></div>
+          <div class="tiny-label top-label">
+            A SMALL FRIEND.<br />A REAL CONVERSATION.
+          </div>
+          <div class="stick">
+            <div class="side-button"></div>
+            <div class="screen">
+              <div class="screen-top"><span>CRAB</span><span>WiFi ●</span></div>
+              <img
+                class="crab"
+                src="./assets/crab-idle.gif"
+                alt="Original animated orange crab avatar"
+                width="180"
+                height="180"
+              />
+              <div class="screen-caption" data-zh="你好，我是小螃蟹。">
+                Hello, I’m Crab.
+              </div>
+            </div>
+            <div class="talk-button"><span></span></div>
+            <span class="device-label">M5STACK · STICKS3</span>
+          </div>
+          <div class="floating-note">
+            <span class="dot"></span
+            ><span data-zh="你的声音，在这里变成对话。"
+              >Your voice, a conversation away.</span
+            >
+          </div>
+        </div>
+      </section>
+      <div class="proof wrap">
+        <span data-zh="实机验证组合">VERIFIED ON HARDWARE</span>
+        <p>
+          StickS3 <b>+</b> macOS <b>+</b> faster-whisper <b>+</b> Pi / DeepSeek
+          <b>+</b> macOS TTS
+        </p>
+      </div>
+      <section id="how" class="section wrap">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow" data-zh="简单的设备，灵活的后端">
+              SMALL HARDWARE. OPEN POSSIBILITIES.
+            </p>
+            <h2 data-zh="掌心里的螃蟹。\n电脑里的大脑。">
+              A Crab in your hand.\nA brain on your computer.
+            </h2>
+          </div>
+          <p
+            data-zh="设备负责录音、动画、字幕和播放；电脑负责语音识别、模型对话与语音合成。API 密钥留在电脑。"
+          >
+            The device records, animates, displays captions and plays audio.
+            Your computer handles speech and model access. API keys stay on the
+            computer.
+          </p>
+        </div>
+        <div class="pipeline">
+          <div>
+            <span>01</span><strong data-zh="按住说话">Hold to talk</strong
+            ><small>StickS3 · 16 kHz WAV</small>
+          </div>
+          <span class="arrow">→</span>
+          <div>
+            <span>02</span
+            ><strong data-zh="识别与思考">Recognize & think</strong
+            ><small>Computer · STT + Pi</small>
+          </div>
+          <span class="arrow">→</span>
+          <div>
+            <span>03</span><strong data-zh="字幕与语音">Read & listen</strong
+            ><small>Captions + PCM audio</small>
+          </div>
+        </div>
+        <div class="features">
+          <article>
+            <span class="feature-icon">◉</span>
+            <h3 data-zh="看得见的对话">Conversations you can see</h3>
+            <p
+              data-zh="设备显示字幕，浏览器同步识别文字、流式回复、处理状态与错误。"
+            >
+              Read captions on the device. Follow live transcripts, streamed
+              replies, stages and errors in your browser.
+            </p>
+          </article>
+          <article>
+            <span class="feature-icon">↗</span>
+            <h3 data-zh="模型由你选择">Bring your own model</h3>
+            <p
+              data-zh="通过 Pi 选择已配置的服务商与模型。云端模型按服务商规则收费，本地模型需要自行配置。"
+            >
+              Select configured providers and models through Pi. Cloud usage
+              follows provider pricing; local models need your own setup.
+            </p>
+          </article>
+          <article>
+            <span class="feature-icon">≈</span>
+            <h3 data-zh="调整到顺耳">Make it sound like you</h3>
+            <p
+              data-zh="在本机控制台调整 Whisper 模型、识别语言、系统声音与语速，并支持关闭语音回复。"
+            >
+              Tune Whisper, recognition language, the installed voice and speech
+              rate. Or switch to text-only replies.
+            </p>
+          </article>
+        </div>
+      </section>
+      <section id="start" class="section getting-started">
+        <div class="wrap">
+          <p class="eyebrow" data-zh="从这里开始">
+            FROM THE WORKBENCH TO YOUR POCKET
+          </p>
+          <h2 data-zh="准备好认识它了吗？">Ready to meet your Crab?</h2>
+          <div class="tabs" role="tablist" aria-label="Setup guide">
+            <button
+              id="daily-tab"
+              role="tab"
+              aria-selected="true"
+              aria-controls="daily"
+              data-zh="设备已配置"
+            >
+              Already set up</button
+            ><button
+              id="install-tab"
+              role="tab"
+              aria-selected="false"
+              aria-controls="install"
+              data-zh="首次安装"
+            >
+              First installation
+            </button>
+          </div>
+          <div id="daily" role="tabpanel" aria-labelledby="daily-tab">
+            <div class="guide-grid">
+              <div>
+                <h3 data-zh="1. 启动电脑服务">1. Start the bridge</h3>
+                <p
+                  data-zh="在仓库根目录运行，保持终端开启、电脑唤醒。修改代码后先 npm run build。"
+                >
+                  Run from the repository root. Keep the terminal open and
+                  computer awake. Run npm run build first after code changes.
+                </p>
+                <div class="code">
+                  <pre><code>cd crab/bridge
+npm start</code></pre>
+                  <button class="copy" data-zh="复制">Copy</button>
+                </div>
+              </div>
+              <div>
+                <h3 data-zh="2. 打开本机控制台">2. Open your local console</h3>
+                <p
+                  data-zh="打开下方地址，使用本机 crab/bridge/.env 中的 CRAB_TOKEN 登录。默认英文，可切换中文。"
+                >
+                  Open the address below and sign in with CRAB_TOKEN from your
+                  local crab/bridge/.env. Switch between English and Chinese in
+                  the header.
+                </p>
+                <a
+                  class="console-link"
+                  href="http://127.0.0.1:8787/"
+                  target="_blank"
+                  rel="noreferrer"
+                  >http://127.0.0.1:8787/ ↗</a
+                >
+                <p
+                  class="small"
+                  data-zh="仅在运行桥接服务的电脑上有效。这是项目介绍网站，不是你的设备控制台。"
+                >
+                  Works on the computer running the bridge. This project website
+                  is separate from your device console.
+                </p>
+              </div>
+            </div>
+            <div class="daily-tip">
+              <span>03 /</span>
+              <p
+                data-zh="按住 StickS3 正面按钮说“你好，你是谁”，松开后检查字幕和语音。"
+              >
+                Hold the StickS3 front button, say “你好，你是谁”, and release.
+                Check the captions and spoken reply.
+              </p>
+            </div>
+          </div>
+          <div
+            id="install"
+            role="tabpanel"
+            aria-labelledby="install-tab"
+            hidden
+          >
+            <p
+              class="requirements"
+              data-zh="准备：StickS3、USB 数据线、可互通的 2.4 GHz Wi-Fi、Node.js ≥ 22.19、Python 3 与 ESP-IDF 6.0.1。当前本地语音方案使用 macOS。"
+            >
+              You’ll need a StickS3, USB data cable, reachable 2.4 GHz Wi-Fi,
+              Node.js ≥ 22.19, Python 3 and ESP-IDF 6.0.1. The verified local
+              speech setup uses macOS.
+            </p>
+            <ol class="steps">
+              <li>
+                <strong data-zh="获取代码并安装依赖"
+                  >Get the code & install dependencies</strong
+                >
+                <div class="code">
+                  <pre><code>git clone https://github.com/everettjf/muse-gadget-sdk.git
+cd muse-gadget-sdk/crab/bridge
+npm ci --ignore-scripts
+npm run build
+cp -n .env.example .env</code></pre>
+                  <button class="copy" data-zh="复制">Copy</button>
+                </div>
+              </li>
+              <li>
+                <strong data-zh="配置电脑端">Configure the computer</strong>
+                <p
+                  data-zh="生成共享 token，配置 DeepSeek / Pi 与本地语音，首次使用先开启 demo。完整步骤见下方指南。"
+                >
+                  Generate a shared token, configure DeepSeek / Pi and local
+                  speech, and start with demo mode. Follow the linked setup
+                  guide for the full configuration.
+                </p>
+              </li>
+              <li>
+                <strong data-zh="先备份，再烧录"
+                  >Back up before flashing</strong
+                >
+                <p
+                  data-zh="保存完整 8 MiB Flash 和 SHA256，构建 Crab 固件并烧录。通过 USB 设置 Wi-Fi、电脑局域网地址与相同 token。"
+                >
+                  Save the full 8 MiB flash and SHA256, then build and flash
+                  Crab. Configure Wi-Fi, the computer’s LAN address and the same
+                  token over USB.
+                </p>
+              </li>
+              <li>
+                <strong data-zh="从 demo 切换到真实对话"
+                  >Go from demo to real conversation</strong
+                >
+                <p
+                  data-zh="先确认固定字幕与测试音正常，再设置 CRAB_DEMO=false 并重启服务。靠近麦克风验证识别、字幕和回复声音。"
+                >
+                  Verify fixed captions and the demo tone, then set
+                  CRAB_DEMO=false and restart the bridge. Test recognition,
+                  captions and speech near the microphone.
+                </p>
+              </li>
+            </ol>
+            <a
+              class="button primary"
+              href="https://github.com/everettjf/muse-gadget-sdk/blob/main/crab/QUICKSTART.zh-CN.md"
+              data-zh="阅读完整中文安装指南 ↗"
+              >Read the complete setup guide (中文) ↗</a
+            ><a
+              class="text-link"
+              href="https://github.com/everettjf/muse-gadget-sdk/blob/main/crab/README.md"
+              data-zh="英文技术文档 ↗"
+              >English technical guide ↗</a
+            >
+          </div>
+        </div>
+      </section>
+      <section class="section wrap">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow" data-zh="几个按钮，就够了">
+              A FEW BUTTONS. THAT’S ALL.
+            </p>
+            <h2 data-zh="让操作保持简单。">Keep it hands-on.</h2>
+          </div>
+        </div>
+        <div class="controls">
+          <div>
+            <kbd data-zh="正面 · 按住">FRONT · HOLD</kbd>
+            <h3 data-zh="录音，松开发送">Record. Release to send.</h3>
+            <p data-zh="每轮最长 20 秒。">Up to 20 seconds per turn.</p>
+          </div>
+          <div>
+            <kbd data-zh="正面 · 处理中按下">FRONT · PRESS WHILE BUSY</kbd>
+            <h3 data-zh="取消当前对话">Cancel the current turn.</h3>
+            <p data-zh="取消完成后可开始下一轮。">
+              Start again once cancellation finishes.
+            </p>
+          </div>
+          <div>
+            <kbd data-zh="侧面 · 短按">SIDE · SHORT PRESS</kbd>
+            <h3 data-zh="翻页，让它开心">Turn the page. Make it happy.</h3>
+            <p data-zh="切换字幕页，触发开心动画。">
+              Page through captions and trigger a happy reaction.
+            </p>
+          </div>
+        </div>
+      </section>
+      <section class="section wrap notes">
+        <div>
+          <p class="eyebrow" data-zh="首版的边界">A WORKING FIRST VERSION</p>
+          <h2 data-zh="知道它现在能做什么。">Know what’s ready.</h2>
+          <p
+            data-zh="实机已通过中文识别、字幕、语音回复、取消、重连与心跳检查。电池续航、纯电池唤醒和长时间稳定性仍待测量。"
+          >
+            Chinese recognition, captions, voice replies, cancellation,
+            reconnection and heartbeats have been exercised on hardware. Battery
+            runtime, battery-only wake and long-term stability still need
+            measurement.
+          </p>
+          <a
+            class="text-link"
+            href="https://github.com/everettjf/muse-gadget-sdk/blob/main/crab/VALIDATION.md"
+            data-zh="查看实际验收记录 ↗"
+            >Read the validation record ↗</a
+          >
+        </div>
+        <div class="note-card">
+          <h3 data-zh="使用前记住这几件事">A few things to remember</h3>
+          <ul>
+            <li data-zh="电脑需保持唤醒，设备能够访问电脑的局域网 IP。">
+              Keep the computer awake and reachable at its LAN IP.
+            </li>
+            <li
+              data-zh="首版只支持聊天；不能创建提醒或持久便签。服务重启会清空对话。"
+            >
+              Chat only: no reminders or persistent notes. Restarting the bridge
+              clears conversations.
+            </li>
+            <li data-zh="使用可信局域网 HTTP。不要把桥接端口转发到公网。">
+              Use HTTP on a trusted LAN. Do not forward the bridge port to the
+              internet.
+            </li>
+            <li data-zh="切换模型会清空上下文，语音设置从下一轮生效。">
+              Model switches clear context. Speech settings apply to the next
+              turn.
+            </li>
+          </ul>
+        </div>
+      </section>
+    </main>
+    <footer class="wrap">
+      <a class="brand" href="#home">🦀 Crab</a>
+      <p data-zh="小小设备，自由折腾。">Small device. Room to tinker.</p>
+      <div>
+        <a href="https://github.com/everettjf/muse-gadget-sdk">Source ↗</a
+        ><a
+          href="https://github.com/everettjf/muse-gadget-sdk/blob/main/crab/LICENSE"
+          >Crab · MIT</a
+        >
+      </div>
+    </footer>
+  </body>
+</html>
