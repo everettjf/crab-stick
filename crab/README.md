@@ -9,13 +9,17 @@ StickS3 (16 kHz WAV) → computer bridge → Chinese STT → Pi session
 StickS3 (captions + 16 kHz PCM) ← computer bridge ← text + optional TTS
 ```
 
+## What works today
+
+The verified setup is **StickS3 → macOS bridge → local faster-whisper → Pi SDK / DeepSeek → macOS Chinese TTS → StickS3**. The device handles recording, buttons, animation, captions and playback; the computer handles speech recognition and model access. Cloud model usage is billed by the chosen provider.
+
 ## Current verification
 
 - ESP-IDF 6.0.1 StickS3 build passes; application 2.12 MiB, 70% partition space free.
 - Bridge TypeScript compilation and eight Node/two Python tests pass, including real Pi SDK against a local test model server, continuous conversation, no enabled tools, Chinese transcript, PCM transport, invalid input, authentication, and cancellation.
 - All eight avatar animations compile and run under address/undefined-behavior sanitizers; GIF previews can be regenerated.
 - macOS Chinese TTS produces correct 16 kHz mono PCM on this computer.
-- Connected StickS3 was backed up, flashed, joined Wi-Fi and passed audio loopback, recording-limit, cancellation and reconnection checks. DeepSeek/Pi/STT/TTS ran with real services. Near-mouth human Chinese recognition/display acceptance and battery-only runtime remain pending; see [validation details](VALIDATION.md).
+- Connected StickS3 was backed up, flashed, joined Wi-Fi and passed audio loopback, recording-limit, cancellation and reconnection checks. DeepSeek/Pi/STT/TTS ran with real services. The user confirmed accurate near-mouth Chinese recognition, the crab display, reply captions and audible speech in two real conversations. Battery-only runtime and extended soak testing remain pending; see [validation details](VALIDATION.md).
 
 ## Layout
 
@@ -134,10 +138,24 @@ The helper prompts for SSID, hidden Wi-Fi password, the bridge URL (e.g. `http:/
 
 This first version uses **HTTP on a trusted LAN**; its bearer token authenticates requests but does not encrypt traffic. Do not expose the port to the internet. Wi-Fi/password and the token are stored in device flash without encryption, preserving easy reflashing.
 
+## Daily use and troubleshooting
+
+After the first setup, run `npm run build` when source changes, then `npm start` from `crab/bridge` and keep the Mac awake. The device retains its Wi-Fi, URL and token across normal reflashes. Do not restart the bridge during an active conversation.
+
+| Symptom | Check |
+|---|---|
+| Connection failure or timeout | Confirm the bridge is running, the Mac is awake, and the device URL uses the Mac’s current LAN IP and port. Reconfigure over USB if the address changed. |
+| Recognition works but there is no reply | Check the bridge terminal for provider/processing errors and confirm Pi’s model credentials. |
+| Reply text without speech | Check the TTS command or API; TTS failure intentionally preserves the text reply. |
+| No speech recognized | Move closer to the microphone, reduce background noise and check the local STT model. |
+| USB status or flashing fails | Close other serial monitors first; only one process should access the port. |
+
+Connection/upload/header operations allow 10 s per operation; response reads poll at 1 s, with a 120 s response deadline. The bridge also enforces a 120 s turn timeout. These are limits, not expected reply times.
+
 ## Controls and limits
 
 - Hold the front button to record; release to send, maximum 20 seconds.
-- Press front during processing/playback to cancel; after cancellation finishes, press again for the next turn. Cancel checks occur between HTTP reads (1 s timeout) and 20 ms playback chunks.
+- Press front during processing/playback to cancel; after cancellation finishes, press again for the next turn. Cancel checks occur between HTTP reads (1 s timeout) and 20 ms playback chunks; connection/upload operations can take up to their 10 s timeout.
 - Short side-button press pages the text and makes the crab happy.
 - Hold side for 3 s while idle to power down; either button wakes via restart.
 - On battery: screen turns off after 30 s idle; automatic deep sleep after 120 s. Button interaction wakes the screen. USB prevents automatic sleep. These behaviors still require physical verification.
@@ -172,9 +190,9 @@ Response is UTF-8 NDJSON, one event per LF:
 
 Audio chunks are at most 6,400 bytes before base64. Errors after acceptance are `{type:"error",text:"..."}`; TTS failures emit a warning and preserve the text reply. `POST /v1/cancel` cancels a device's active turn; `POST /v1/reset` forgets an idle conversation; authenticated `GET /health` checks transport availability. Closing the device's response connection also aborts its turn.
 
-## Remaining acceptance work
+## Acceptance status
 
-The device has been backed up/flashed and the real provider/audio pipeline exercised. See [VALIDATION.md](VALIDATION.md) for evidence and limits. User confirmation of physical push-to-talk, near-mouth Chinese recognition, display appearance and audible speech is still needed, along with battery-only timeouts/button wake and runtime measurements. A timer-based deep-sleep recovery cycle has passed on the board.
+The user accepted the core interaction: physical push-to-talk, accurate Chinese recognition, crab display, reply captions and audible speech. Two real conversations completed after the transport timeout adjustment. A timer-based deep-sleep recovery cycle also passed. Battery-only timeouts/button wake, measured runtime and longer stability testing remain open; see [VALIDATION.md](VALIDATION.md) for evidence and limits.
 
 ## USB diagnostics
 

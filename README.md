@@ -14,7 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# Muse Gadgets
+# Crab 🦀 · StickS3 随身语音助手
+
+基于 M5Stack StickS3 的独立固件，搭配电脑端 Pi SDK 桥接服务：按住说话，松开后显示中文字幕并播放回复。无需 Muse 账号、SDK token 或订阅。
+
+已在实机确认螃蟹动画、中文识别、DeepSeek 回复、字幕与语音播放。当前验证组合是 **StickS3 + macOS + faster-whisper + Pi + DeepSeek + 系统中文 TTS**；电池续航与长时间稳定性仍待测量。
+
+- [中文上手指南](crab/QUICKSTART.zh-CN.md)：安装、备份、烧录、配置和日常使用。
+- [Crab 技术说明](crab/README.md)：架构、按钮操作、模型与语音适配、协议。
+- [实机验收记录](crab/VALIDATION.md)：已通过的测试和剩余限制。
+
+所有新增实现位于 [`crab/`](crab/)，复用上游板级驱动、音频与字体。下面保留原 Muse SDK 的介绍；其中账号、配对和订阅要求适用于上游 Muse 应用。
+
+---
+
+# Muse Gadgets — upstream SDK
 
 <p align="center">
   <picture>
