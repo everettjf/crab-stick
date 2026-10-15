@@ -5,6 +5,8 @@ import { createPiAgent, listPiModels } from "./pi.js";
 import { createBridge } from "./server.js";
 import { SettingsStore, defaultSettings, audioEnvironment } from "./control.js";
 
+import { listMacVoices } from "./voices.js";
+
 const env = process.env;
 const dataDir = resolve("data");
 await mkdir(resolve(dataDir, "workspace"), { recursive: true });
@@ -44,6 +46,9 @@ const server = createBridge(
         PI_MODEL: value.model,
       }),
     models: () => listPiModels(env),
+    voices: /local_audio\.py/.test(env.TTS_COMMAND || "")
+      ? listMacVoices
+      : undefined,
   },
 );
 const port = Number(env.CRAB_PORT || 8787);

@@ -108,7 +108,7 @@ If the computer's IP changes, update the device URL over USB. Detailed recovery 
 
 ## Status and limits
 
-Real hardware has passed Chinese push-to-talk recognition, captions, spoken replies, cancellation, Wi-Fi reconnection and heartbeat checks. The bridge has 17 Node tests plus two Python serial tests. [Validation records](crab/VALIDATION.md) distinguish verified behavior from remaining work.
+Real hardware has passed Chinese push-to-talk recognition, captions, spoken replies, cancellation, Wi-Fi reconnection and heartbeat checks. The bridge has 19 Node tests plus two Python serial tests. [Validation records](crab/VALIDATION.md) distinguish verified behavior from remaining work.
 
 - The computer must remain available. Transport is trusted-LAN HTTP; do not forward its port to the internet.
 - This version chats and answers questions. It has no reminder, persistent note, file or home-control tools.

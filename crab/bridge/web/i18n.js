@@ -1,6 +1,14 @@
 "use strict";
 (() => {
   const messages = {
+    "（当前声音不可用）": " (current voice unavailable)",
+    "所选声音不可用，请重新选择系统声音":
+      "Selected voice is unavailable. Choose an available system voice.",
+    "系统声音列表读取失败，请重新连接控制台。":
+      "Could not load system voices. Reconnect to try again.",
+    "选择系统可用声音，当前识别语言优先排列。语速为每分钟词数。":
+      "Choose an available system voice. Your recognition language is listed first. Rate is in words per minute.",
+    可用系统声音: "Available system voices",
     "Crab · 设备控制台": "Crab · Device console",
     "随身助手 / 本地控制台": "Pocket companion / Local console",
     尚未连接: "Not connected",

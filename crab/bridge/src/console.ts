@@ -1,3 +1,4 @@
+import type { VoiceChoice } from "./voices.js";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { readFile } from "node:fs/promises";
 import {
@@ -53,6 +54,7 @@ export function consoleRoutes(
   models: () => Promise<ModelChoice[]>,
   apply: (next: unknown) => Promise<void>,
   info: object,
+  voices: () => Promise<VoiceChoice[]>,
 ) {
   const streams = new Set<ServerResponse>();
   const snapshot = () => ({
@@ -71,6 +73,8 @@ export function consoleRoutes(
           json(res, snapshot());
         else if (req.method === "GET" && req.url === "/api/models")
           json(res, await models());
+        else if (req.method === "GET" && req.url === "/api/voices")
+          json(res, await voices());
         else if (req.method === "PUT" && req.url === "/api/settings") {
           await apply(validateSettings(await jsonBody(req)));
           monitor.log(

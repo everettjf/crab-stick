@@ -16,7 +16,7 @@ The verified setup is **StickS3 → macOS bridge → local faster-whisper → Pi
 ## Current verification
 
 - ESP-IDF 6.0.1 StickS3 build passes; application 2.12 MiB, 70% partition space free.
-- Bridge TypeScript compilation and seventeen Node/two Python tests pass, including real Pi SDK against a local test model server, continuous conversation, no enabled tools, Chinese transcript, PCM transport, invalid input, authentication, and cancellation.
+- Bridge TypeScript compilation and nineteen Node/two Python tests pass, including real Pi SDK against a local test model server, continuous conversation, no enabled tools, Chinese transcript, PCM transport, invalid input, authentication, and cancellation.
 - All eight avatar animations compile and run under address/undefined-behavior sanitizers; GIF previews can be regenerated.
 - macOS Chinese TTS produces correct 16 kHz mono PCM on this computer.
 - Connected StickS3 was backed up, flashed, joined Wi-Fi and passed audio loopback, recording-limit, cancellation and reconnection checks. DeepSeek/Pi/STT/TTS ran with real services. The user confirmed accurate near-mouth Chinese recognition, the crab display, reply captions and audible speech in two real conversations. Battery-only runtime and extended soak testing remain pending; see [validation details](VALIDATION.md).
@@ -31,6 +31,8 @@ With the bridge running, open **http://127.0.0.1:8787/** (or the computer's LAN 
 - **Conversation:** live transcript, streamed reply, processing stages and timings. “Reply sent” means the bridge finished sending; playback state comes from the device heartbeat.
 - **Logs:** errors, cancellations, TTS warnings and settings changes, with level filtering and credential redaction. Retention is bounded to 50 devices, 100 turns and 200 log entries, in memory only.
 - **Settings:** select a credential-configured Pi model; tune bundled faster-whisper model/language and macOS voice/rate; enable/disable TTS. Speech APIs support language/voice where applicable. Custom command arguments remain configured on the computer; the browser cannot edit keys, endpoints or executables.
+
+For the bundled macOS adapter, **Voice name** is a dropdown populated from `say -v ?`, grouped by language with the recognition language first. Legacy short names such as `Tingting` resolve to an unambiguous full catalog name. Saving checks that the voice is available; API adapters retain their provider-specific text input. Reconnect the console to refresh the catalog after installing voices.
 
 Settings persist privately in `bridge/data/console-settings.json`, override environment defaults on restart, and apply next turn. To restore environment defaults, stop the bridge and move that file aside. Saving is blocked while any device is processing. Switching model clears all Pi conversation contexts; speech-only changes retain them. First use of a new Whisper model may download it.
 
@@ -197,6 +199,7 @@ These routes require `Authorization: Bearer CRAB_TOKEN`, without a device header
 | `GET /api/state` | Device, conversation, log and settings snapshot |
 | `GET /api/events` | SSE snapshots; reconnect receives the current state |
 | `GET /api/models` | Pi model choices with configured credentials |
+| `GET /api/voices` | Available local macOS voice names and language codes |
 | `PUT /api/settings` | Validate/persist all settings; 409 during active turns |
 
 Firmware reports authenticated JSON to `POST /v1/status` with `X-Device-ID`, `battery`, `usb`, `mode`, `uptime_ms` and `free_internal`. Heartbeats do not change conversation context.

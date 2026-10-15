@@ -69,3 +69,9 @@ This checks serial stability, record cancellation, Wi-Fi reconnect and optional 
 - Default English UI with a Chinese/English toggle and a browser-local language preference. Transcript/reply text is preserved; language changes do not update speech settings or reconnect the device.
 - TypeScript build and 17 Node tests pass, including default locale, parameterized status/error translations, multiline static labels, numeric values, preference restoration and unavailable browser storage.
 - Browser verified default English, Chinese login/console, Chinese preference after refresh, dynamic device/status/save messages, and retention of an unsaved model choice across language switches. Finished with the English interface and original model/voice settings.
+
+## Voice dropdown validation
+
+- TypeScript build and 19 Node tests pass. Added authenticated voice catalog/invalid-selection checks, parsing of multiword/accented/full macOS voice names, duplicate handling and legacy alias resolution.
+- Real macOS catalog returned 184 choices. Browser verified language-grouped dropdown selection and saving; the final choice is Tingting (Chinese (China mainland)). Synthesizing a short Chinese sentence with that full name returned 30,971 PCM frames.
+- Settings fields are disabled during saving so a delayed response cannot overwrite a newly edited voice draft. API speech adapters retain a provider-specific text field.

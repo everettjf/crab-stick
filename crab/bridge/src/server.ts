@@ -8,6 +8,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { AudioServices, MAX_WAV_BYTES, validateWav } from "./audio.js";
 import type { Agent } from "./pi.js";
+import { resolveVoiceName, type VoiceChoice } from "./voices.js";
 import {
   SettingsStore,
   Monitor,
@@ -31,6 +32,7 @@ export type Services = {
   agent: (id: string, settings: RuntimeSettings) => Promise<Agent>;
   audioFor?: (settings: RuntimeSettings) => Services["audio"];
   models?: () => Promise<ModelChoice[]>;
+  voices?: () => Promise<VoiceChoice[]>;
 };
 function displayError(error: unknown): string {
   const message = error instanceof Error ? error.message : "对话失败，请重试";
@@ -73,6 +75,12 @@ export function createBridge(config: BridgeConfig, services: Services) {
               "模型不可用，请先在电脑端配置 Pi 凭据与 models.json",
             );
         }
+        if (services.voices && next.ttsEnabled) {
+          const voices = await services.voices();
+          const voice = resolveVoiceName(voices, next.voice);
+          if (!voice) throw new Error("所选声音不可用，请重新选择系统声音");
+          next.voice = voice;
+        }
         const switched =
           next.provider !== store.current.provider ||
           next.model !== store.current.model;
@@ -91,6 +99,7 @@ export function createBridge(config: BridgeConfig, services: Services) {
       }
     },
     { demo: config.demo, audio: config.audioInfo || {} },
+    services.voices || (async () => []),
   );
   function auth(req: IncomingMessage) {
     const got = Buffer.from(req.headers.authorization || "");

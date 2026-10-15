@@ -11,6 +11,8 @@ let token = "",
   dirty = false,
   initialized = false,
   choices = [],
+  voiceChoices = [],
+  voiceLoadFailed = false,
   generation = 0,
   saving = false;
 const stages = {
@@ -87,6 +89,40 @@ function fillSettings(state) {
   $("language").value = s.language;
   $("tts-enabled").checked = s.ttsEnabled;
   $("voice").value = s.voice;
+  $("voice").hidden = !!state.audio.bundledTts;
+  $("voice").required = !state.audio.bundledTts;
+  $("voice-select").hidden = !state.audio.bundledTts;
+  $("voice-label").htmlFor = state.audio.bundledTts ? "voice-select" : "voice";
+  const voices = [...voiceChoices].sort(
+    (a, b) =>
+      Number(b.language.startsWith(s.language + "_")) -
+      Number(a.language.startsWith(s.language + "_")),
+  );
+  const groups = new Map();
+  for (const v of voices) {
+    if (!groups.has(v.language)) {
+      const group = document.createElement("optgroup");
+      group.label = v.language;
+      groups.set(v.language, group);
+    }
+    const option = el("option", v.name);
+    option.value = v.name;
+    groups.get(v.language).append(option);
+  }
+  $("voice-select").replaceChildren(...groups.values());
+  const aliases = voices.filter((v) => v.name.split(" (")[0] === s.voice);
+  const selectedVoice = voices.some((v) => v.name === s.voice)
+    ? s.voice
+    : aliases.length === 1
+      ? aliases[0].name
+      : s.voice;
+  if (!voices.some((v) => v.name === selectedVoice)) {
+    const current = el("option", s.voice + t("（当前声音不可用）"));
+    current.value = s.voice;
+    current.disabled = true;
+    $("voice-select").prepend(current);
+  }
+  $("voice-select").value = selectedVoice;
   $("rate").value = s.rate;
   setText("rate-value", s.rate);
   const a = state.audio;
@@ -106,7 +142,9 @@ function fillSettings(state) {
   setText(
     "tts-note",
     a.bundledTts
-      ? "填写已安装的 macOS 声音名，例如 Tingting。语速为每分钟词数。"
+      ? voiceLoadFailed
+        ? "系统声音列表读取失败，请重新连接控制台。"
+        : "选择系统可用声音，当前识别语言优先排列。语速为每分钟词数。"
       : a.tts === "api"
         ? "声音名需由语音 API 支持；语速仅用于本地 macOS 适配器。"
         : "自定义语音命令在电脑端配置；关闭播放可仅返回文字。",
@@ -326,6 +364,13 @@ $("login-form").addEventListener("submit", async (e) => {
   try {
     const state = await (await api("/api/state")).json();
     choices = await (await api("/api/models")).json();
+    voiceLoadFailed = false;
+    try {
+      voiceChoices = await (await api("/api/voices")).json();
+    } catch {
+      voiceChoices = [];
+      voiceLoadFailed = true;
+    }
     modelOptions();
     $("token").value = "";
     $("login").hidden = true;
@@ -351,6 +396,7 @@ $("settings-form").addEventListener("input", () => {
 $("settings-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   saving = true;
+  $("settings-fields").disabled = true;
   $("save").disabled = true;
   const [provider, model] = $("model").value
     ? JSON.parse($("model").value)
@@ -361,7 +407,9 @@ $("settings-form").addEventListener("submit", async (e) => {
     sttModel: $("stt-model").value,
     language: $("language").value,
     ttsEnabled: $("tts-enabled").checked,
-    voice: $("voice").value.trim(),
+    voice: latest?.audio.bundledTts
+      ? $("voice-select").value
+      : $("voice").value.trim(),
     rate: Number($("rate").value),
   };
   try {
@@ -376,6 +424,7 @@ $("settings-form").addEventListener("submit", async (e) => {
     setText("settings-result", error.message);
   } finally {
     saving = false;
+    $("settings-fields").disabled = false;
     $("save").disabled = latest?.devices.some((d) => d.processing) || false;
   }
 });

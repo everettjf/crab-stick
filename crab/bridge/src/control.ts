@@ -52,7 +52,7 @@ export function validateSettings(value: unknown): RuntimeSettings {
   if (
     typeof v.ttsEnabled !== "boolean" ||
     typeof v.voice !== "string" ||
-    !/^[\p{L}\p{N} _.-]{1,80}$/u.test(v.voice) ||
+    !/^[\p{L}\p{N} _.'()-]{1,120}$/u.test(v.voice) ||
     !Number.isInteger(v.rate) ||
     v.rate < 80 ||
     v.rate > 350
