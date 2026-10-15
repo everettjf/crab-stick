@@ -14,13 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# Crab 🦀 — your StickS3 voice companion
+# Crab Stick 🦀 — your StickS3 voice companion
 
 Hold to talk. Release to listen. An independent M5Stack StickS3 firmware with an animated crab, on-device captions, voice replies and a browser console powered by the Pi SDK on your computer.
 
 **No Muse account, SDK token or subscription required.** You choose the model and speech services; cloud model usage follows the provider's pricing.
 
-[Project website](https://xnu.app/muse-gadget-sdk/) · [中文使用指南](crab/QUICKSTART.zh-CN.md) · [Technical guide](crab/README.md) · [Hardware validation](crab/VALIDATION.md)
+[Project website](https://xnu.app/crab-stick/) · [中文使用指南](crab/QUICKSTART.zh-CN.md) · [Technical guide](crab/README.md) · [Hardware validation](crab/VALIDATION.md)
 
 ## What runs where?
 
@@ -55,8 +55,8 @@ The public project website explains setup; it is separate from your local consol
 Prepare a StickS3, a USB data cable, reachable 2.4 GHz Wi-Fi, Node.js **≥22.19**, Python 3 and ESP-IDF **6.0.1**. The verified local speech path uses macOS.
 
 ```sh
-git clone https://github.com/everettjf/muse-gadget-sdk.git
-cd muse-gadget-sdk/crab/bridge
+git clone https://github.com/everettjf/crab-stick.git
+cd crab-stick/crab/bridge
 npm ci --ignore-scripts
 npm run build
 npm test

@@ -1,10 +1,10 @@
-# Crab project website
+# Crab Stick project website
 
 Static GitHub Pages source. This is the public project guide, separate from the authenticated local console in `crab/bridge/web/`.
 
 - English by default, with a remembered Chinese toggle.
 - No build, dependencies, analytics, credentials or device API calls.
-- Relative assets support project subpaths, including the account’s inherited Pages domain: `https://xnu.app/muse-gadget-sdk/`.
+- Relative assets support project subpaths, including the account’s inherited Pages domain: `https://xnu.app/crab-stick/`.
 - `.github/workflows/pages.yml` checks the site and publishes only this folder from `main`.
 
 Preview from the repository root:
