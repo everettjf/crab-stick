@@ -33,13 +33,13 @@ This report separates automated checks, actual board evidence and remaining huma
 - Replaced serial control-line manipulation with POSIX I/O and disabled HUPCL so opening/closing a configuration connection doesn't reset native ESP32 USB.
 - Added private USB diagnostics for timed recording, cancellation, audio self-test, reconnect, pet/page, and uptime/memory/caption status.
 - Kept the record-start cancellation fix and preserved meaningful service errors on screen.
-- Raised connection/upload/header timeout from 1 s to 10 s while retaining 1 s response polling, and added credential-free transport-stage diagnostics. This addresses a possible Wi-Fi sensitivity; the reported human turn still requires a retry. A subsequent timed microphone turn on the new image received a real model reply and entered audio playback; external Mac speech was again contaminated by ambient speech and is not an STT accuracy measurement.
+- Raised connection/upload/header timeout from 1 s to 10 s while retaining 1 s response polling, and added credential-free transport-stage diagnostics. This addresses a possible Wi-Fi sensitivity; both subsequent human retries completed with subtitles and speech. A subsequent timed microphone turn on the new image received a real model reply and entered audio playback; external Mac speech was again contaminated by ambient speech and is not an STT accuracy measurement.
 - Shortened the assistant prompt and clarified that the first version has no file/reminder/home-control tools. Increased local speech rate moderately.
 - Added stage timings, readable Chinese no-speech errors, a local DeepSeek setup helper, and canonical WAV conversion in the computer smoke test.
 
-## Still needed before claiming full acceptance
+## Human acceptance and remaining checks
 
-1. Resolve and recheck the user-reported device timeout after an accurate transcript. Replaying that exact private recording through the stable computer service completed STT/Pi/TTS in about 12 s; that does not prove device delivery. Crab appearance, speaker test and human push-to-talk recognition are confirmed.
+1. **Core voice interaction accepted by the user:** after the timeout adjustment and with the computer service stable, both “明天下午三点去取快递” and “你好，你是谁” produced visible replies and audible speech. Crab appearance, speaker test and human push-to-talk recognition are also confirmed. The earlier failure did not recur in these two retries; its exact cause remains unproven.
 2. Real battery-only screen-off timeout, physical-button wake and runtime test (timer-based deep-sleep recovery passed).
 3. Longer soak and off-network/recovery testing; this prototype uses LAN HTTP and does not support roaming automatically.
 
