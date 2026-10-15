@@ -16,7 +16,7 @@ limitations under the License.
 
 # Crab 🦀 · StickS3 随身语音助手
 
-基于 M5Stack StickS3 的独立固件，搭配电脑端 Pi SDK 桥接服务：按住说话，松开后显示中文字幕并播放回复。无需 Muse 账号、SDK token 或订阅。
+基于 M5Stack StickS3 的独立固件，搭配电脑端 Pi SDK 桥接服务：按住说话，松开后显示中文字幕并播放回复。无需 Muse 账号、SDK token 或订阅。电脑端自带浏览器控制台，可查看设备状态、实时对话与错误日志，切换模型并调整语音设置。
 
 已在实机确认螃蟹动画、中文识别、DeepSeek 回复、字幕与语音播放。当前验证组合是 **StickS3 + macOS + faster-whisper + Pi + DeepSeek + 系统中文 TTS**；电池续航与长时间稳定性仍待测量。
 

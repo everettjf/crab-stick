@@ -54,3 +54,12 @@ python3 crab/tools/hardware_check.py --port /dev/cu.usbmodemXXXX --sleep --outpu
 ```
 
 This checks serial stability, record cancellation, Wi-Fi reconnect and optional timed deep sleep. It deliberately operates the device, so do not press buttons or speak a test sentence concurrently. Full 20 s upload validation was performed separately with the retained private WAV; the quick checker does not claim to cover it.
+
+## Browser console validation — 2026-10-14
+
+- TypeScript build and 14 Node tests pass, including six console regressions covering authenticated state/events/settings, foreign-origin rejection, live SSE deltas, heartbeats, secret redaction, busy-setting rejection, model/context replacement, per-turn speech settings, private persistence and bounded history. Both Python serial tests also pass.
+- Browser exercised against an isolated local fixture: login, incorrect-token handling, live device/conversation rendering, model selection and voice/TTS save. Model/context replacement is tested through HTTP with injected agents.
+- New firmware built/flashed to the connected StickS3; the authenticated browser showed its real heartbeat, battery and USB state. Twelve serial checks, recording cancellation and Wi-Fi reconnection passed, with internal heap around 63.6 KiB.
+- Production browser listed configured Pi models and saved a change to the built-in DeepSeek Flash provider and local speech rate 230. Replaying a private real recording completed STT/Pi/TTS, with its live transcript/reply visible in the browser and 5.77 s of PCM received by the host smoke client. The prior model selection and rate 210 were restored afterward. This replay validates the bridge, not physical speaker playback.
+- Restarted the production service with the console open: the browser automatically reconnected without re-entering its token, restored the current device snapshot and retained the saved model/voice settings. Prior transient conversation/log history cleared as designed.
+- Battery runtime, every installed voice/model combination and long-duration network stability remain unmeasured.

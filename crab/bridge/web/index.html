@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Crab · 设备控制台</title>
+    <link rel="stylesheet" href="/console.css" />
+    <script src="/console.js" defer></script>
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/"
+        >🦀 <span>Crab<small>随身助手 / 本地控制台</small></span></a
+      >
+      <div class="connection">
+        <span id="connection" role="status">尚未连接</span
+        ><button id="logout" hidden>断开</button>
+      </div>
+    </header>
+    <main>
+      <section id="login" class="card login">
+        <div class="eyebrow">WELCOME HOME</div>
+        <h1>看看小螃蟹在忙什么。</h1>
+        <p>
+          连接电脑桥接服务，查看设备、实时对话与错误，调整下一轮对话的设置。
+        </p>
+        <form id="login-form">
+          <label for="token">共享访问令牌 CRAB_TOKEN</label>
+          <div class="inline">
+            <input
+              id="token"
+              type="password"
+              autocomplete="off"
+              required
+              placeholder="填写本机 bridge/.env 中的 CRAB_TOKEN"
+            /><button class="primary">连接控制台</button>
+          </div>
+          <p class="hint">令牌只保存在当前页面内存中。刷新后需重新连接。</p>
+          <p id="login-error" class="error" role="alert"></p>
+        </form>
+      </section>
+      <div id="dashboard" hidden>
+        <div class="intro">
+          <div>
+            <div class="eyebrow">YOUR LITTLE COMPANION</div>
+            <h1>
+              小螃蟹的工作台<span id="demo" class="tag" hidden>DEMO</span>
+            </h1>
+            <p>设备在手边，对话在这里。</p>
+          </div>
+          <span id="updated" class="hint"></span>
+        </div>
+        <div class="layout">
+          <div class="left">
+            <section class="card">
+              <div class="section-head">
+                <h2>设备状态</h2>
+                <span class="tag">10 秒心跳</span>
+              </div>
+              <div id="devices" class="devices">
+                <p class="empty">
+                  等待设备上报。旧固件仅在发送录音后显示最近活动。
+                </p>
+              </div>
+            </section>
+            <section class="card conversation">
+              <div class="section-head">
+                <h2>实时对话</h2>
+                <select id="device-filter" aria-label="筛选对话设备">
+                  <option value="">所有设备</option>
+                </select>
+              </div>
+              <p class="hint">
+                显示此服务进程最近 100
+                轮对话；录音保存以电脑端配置为准。音频发送完成不代表设备已经播放完毕。
+              </p>
+              <div id="turns" aria-live="polite">
+                <p class="empty">
+                  按住 StickS3 正面按钮说话，松开后对话会出现在这里。
+                </p>
+              </div>
+            </section>
+            <section class="card">
+              <div class="section-head">
+                <h2>事件与错误</h2>
+                <select id="log-filter" aria-label="筛选日志">
+                  <option value="">全部级别</option>
+                  <option value="error">错误</option>
+                  <option value="warning">警告</option>
+                  <option value="info">信息</option>
+                </select>
+              </div>
+              <div id="logs" class="logs"><p class="empty">暂无事件。</p></div>
+            </section>
+          </div>
+          <aside>
+            <section class="card settings">
+              <div class="section-head">
+                <h2>下一轮设置</h2>
+                <span class="tag">本机保存</span>
+              </div>
+              <form id="settings-form">
+                <fieldset id="settings-fields">
+                  <label for="model">对话模型</label
+                  ><select id="model">
+                    <option value="">Pi 默认模型</option>
+                  </select>
+                  <p class="hint">
+                    只列出已配置凭据的 Pi 模型。切换模型会清空设备对话上下文。
+                  </p>
+                  <div class="divider"></div>
+                  <h3>语音识别</h3>
+                  <label for="stt-model">本地 Whisper 模型</label
+                  ><select id="stt-model">
+                    <option>tiny</option>
+                    <option>base</option>
+                    <option>small</option>
+                    <option>medium</option>
+                    <option>large-v3</option>
+                    <option>large-v3-turbo</option></select
+                  ><label for="language">识别语言</label
+                  ><select id="language">
+                    <option value="zh">中文</option>
+                    <option value="en">English</option>
+                    <option value="ja">日本語</option>
+                    <option value="ko">한국어</option>
+                    <option value="de">Deutsch</option>
+                    <option value="fr">Français</option>
+                    <option value="es">Español</option>
+                  </select>
+                  <p id="stt-note" class="hint"></p>
+                  <div class="divider"></div>
+                  <h3>语音回复</h3>
+                  <label class="toggle"
+                    ><input
+                      id="tts-enabled"
+                      type="checkbox"
+                    />播放语音回复</label
+                  ><label for="voice">声音名称</label
+                  ><input
+                    id="voice"
+                    maxlength="80"
+                    required
+                    placeholder="例如 Tingting"
+                  /><label for="rate"
+                    >本地语速 <output id="rate-value">210</output></label
+                  ><input
+                    id="rate"
+                    type="range"
+                    min="80"
+                    max="350"
+                    step="10"
+                    value="210"
+                  />
+                  <p id="tts-note" class="hint"></p>
+                  <button id="save" class="primary full" type="submit">
+                    保存设置
+                  </button>
+                </fieldset>
+                <p id="settings-result" role="status" class="hint"></p>
+              </form>
+            </section>
+            <p class="footnote">
+              电脑需保持唤醒。状态和对话仅在本次服务运行期间保留，模型与语音设置会保存在本机。
+            </p>
+          </aside>
+        </div>
+      </div>
+    </main>
+    <footer>CRAB COMPANION <span>自己的设备，自己的模型。</span></footer>
+  </body>
+</html>

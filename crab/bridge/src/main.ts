@@ -1,8 +1,9 @@
 import { resolve } from "node:path";
 import { mkdir } from "node:fs/promises";
 import { AudioServices } from "./audio.js";
-import { createPiAgent } from "./pi.js";
+import { createPiAgent, listPiModels } from "./pi.js";
 import { createBridge } from "./server.js";
+import { SettingsStore, defaultSettings, audioEnvironment } from "./control.js";
 
 const env = process.env;
 const dataDir = resolve("data");
@@ -12,16 +13,37 @@ if (!demo && !env.STT_URL && !env.STT_COMMAND)
   throw new Error(
     "Configure STT_URL/STT_COMMAND or set CRAB_DEMO=true for transport testing",
   );
+const settings = await SettingsStore.load(
+  resolve(dataDir, "console-settings.json"),
+  defaultSettings(env),
+);
 const server = createBridge(
   {
     token: env.CRAB_TOKEN || "",
     dataDir,
     saveRecordings: env.CRAB_SAVE_RECORDINGS === "true",
     demo,
+    settings,
+    secrets: Object.entries(env)
+      .filter(([key]) => /(?:KEY|TOKEN|SECRET|PASSWORD)$/.test(key))
+      .map(([, value]) => value || ""),
+    audioInfo: {
+      stt: env.STT_COMMAND ? "command" : "api",
+      tts: env.TTS_COMMAND ? "command" : env.TTS_URL ? "api" : "none",
+      bundledStt: /local_audio\.py/.test(env.STT_COMMAND || ""),
+      bundledTts: /local_audio\.py/.test(env.TTS_COMMAND || ""),
+    },
   },
   {
     audio: new AudioServices(env),
-    agent: () => createPiAgent(resolve(dataDir, "workspace"), env),
+    audioFor: (value) => new AudioServices(audioEnvironment(env, value)),
+    agent: (_id, value) =>
+      createPiAgent(resolve(dataDir, "workspace"), {
+        ...env,
+        PI_PROVIDER: value.provider,
+        PI_MODEL: value.model,
+      }),
+    models: () => listPiModels(env),
   },
 );
 const port = Number(env.CRAB_PORT || 8787);

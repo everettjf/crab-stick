@@ -8,16 +8,29 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { AudioServices, MAX_WAV_BYTES, validateWav } from "./audio.js";
 import type { Agent } from "./pi.js";
+import {
+  SettingsStore,
+  Monitor,
+  defaultSettings,
+  type RuntimeSettings,
+  type ModelChoice,
+} from "./control.js";
+import { consoleAsset, consoleRoutes, jsonBody, json } from "./console.js";
 
 export type BridgeConfig = {
   token: string;
   dataDir: string;
   saveRecordings: boolean;
   demo: boolean;
+  settings?: SettingsStore;
+  secrets?: string[];
+  audioInfo?: object;
 };
 export type Services = {
   audio: Pick<AudioServices, "transcribe" | "speak">;
-  agent: (id: string) => Promise<Agent>;
+  agent: (id: string, settings: RuntimeSettings) => Promise<Agent>;
+  audioFor?: (settings: RuntimeSettings) => Services["audio"];
+  models?: () => Promise<ModelChoice[]>;
 };
 function displayError(error: unknown): string {
   const message = error instanceof Error ? error.message : "对话失败，请重试";
@@ -36,6 +49,49 @@ export function createBridge(config: BridgeConfig, services: Services) {
   const active = new Map<string, AbortController>();
   const agents = new Map<string, Promise<Agent>>();
   const lastUsed = new Map<string, number>();
+  const store = config.settings || new SettingsStore(defaultSettings({}));
+  const monitor = new Monitor([config.token, ...(config.secrets || [])]);
+  let updating = false;
+  const control = consoleRoutes(
+    store,
+    monitor,
+    services.models || (async () => []),
+    async (value) => {
+      if (active.size || updating)
+        throw new Error("设备正在处理中，请稍后保存设置");
+      updating = true;
+      try {
+        const next = value as RuntimeSettings;
+        if (next.provider || next.model) {
+          const choices = await services.models?.();
+          if (
+            !choices?.some(
+              (m) => m.provider === next.provider && m.id === next.model,
+            )
+          )
+            throw new Error(
+              "模型不可用，请先在电脑端配置 Pi 凭据与 models.json",
+            );
+        }
+        const switched =
+          next.provider !== store.current.provider ||
+          next.model !== store.current.model;
+        await store.save(next);
+        if (switched) {
+          const previous = [...agents.values()];
+          agents.clear();
+          lastUsed.clear();
+          await Promise.all(
+            previous.map((a) => a.then((x) => x.dispose()).catch(() => {})),
+          );
+        }
+        monitor.changed();
+      } finally {
+        updating = false;
+      }
+    },
+    { demo: config.demo, audio: config.audioInfo || {} },
+  );
   function auth(req: IncomingMessage) {
     const got = Buffer.from(req.headers.authorization || "");
     const want = Buffer.from(`Bearer ${config.token}`);
@@ -69,11 +125,21 @@ export function createBridge(config: BridgeConfig, services: Services) {
     }
   }
   const server = createServer(async (req, res) => {
+    if (await consoleAsset(req, res)) return;
+    if (
+      req.headers.origin &&
+      req.headers.origin !== `http://${req.headers.host}`
+    ) {
+      res.writeHead(403);
+      res.end("Origin rejected");
+      return;
+    }
     if (!auth(req)) {
       res.writeHead(401);
       res.end("Unauthorized");
       return;
     }
+    if (await control.handle(req, res)) return;
     if (req.method === "GET" && req.url === "/health") {
       res.setHeader("Content-Type", "application/json");
       res.end(JSON.stringify({ ok: true, demo: config.demo }));
@@ -83,6 +149,34 @@ export function createBridge(config: BridgeConfig, services: Services) {
     if (typeof id !== "string" || !/^[a-zA-Z0-9_-]{1,64}$/.test(id)) {
       res.writeHead(400);
       res.end("Invalid device ID");
+      return;
+    }
+    if (req.method === "POST" && req.url === "/v1/status") {
+      try {
+        const body = (await jsonBody(req, 2048)) as Record<string, unknown>;
+        if (!body || typeof body !== "object" || Array.isArray(body))
+          throw new Error("Invalid status");
+        const fields: Record<string, unknown> = { heartbeatAt: Date.now() };
+        for (const key of ["battery", "mode", "uptime_ms", "free_internal"]) {
+          const v = body[key];
+          if (
+            typeof v !== "number" ||
+            !Number.isFinite(v) ||
+            v < 0 ||
+            (key === "battery" && v > 100) ||
+            (key === "mode" && v > 7)
+          )
+            throw new Error("Invalid status");
+          fields[key] = v;
+        }
+        if (typeof body.usb !== "boolean") throw new Error("Invalid status");
+        fields.usb = body.usb;
+        monitor.touch(id, fields);
+        res.writeHead(204);
+        res.end();
+      } catch {
+        json(res, { error: "Invalid status" }, 400);
+      }
       return;
     }
     if (req.method === "POST" && req.url === "/v1/cancel") {
@@ -110,7 +204,7 @@ export function createBridge(config: BridgeConfig, services: Services) {
       res.end();
       return;
     }
-    if (active.has(id)) {
+    if (active.has(id) || updating) {
       res.writeHead(409);
       res.end("Device busy");
       return;
@@ -127,6 +221,39 @@ export function createBridge(config: BridgeConfig, services: Services) {
     }
     const controller = new AbortController();
     active.set(id, controller);
+    const settings = { ...store.current };
+    let audio = services.audio;
+    const turn = monitor.start(id);
+    const observed = (value: { type: string; text?: string }) => {
+      if (value.type === "accepted") turn.state = "transcribing";
+      if (value.type === "transcript") {
+        turn.transcript = monitor.clean(value.text || "");
+        turn.state = "thinking";
+      }
+      if (value.type === "text_delta")
+        turn.reply = monitor.clean(turn.reply + (value.text || ""));
+      if (value.type === "reply") {
+        turn.reply = monitor.clean(value.text || "");
+        turn.state = "synthesizing";
+      }
+      if (value.type === "warning")
+        monitor.log("warning", id, value.text || "语音合成失败");
+      if (value.type === "done") turn.state = "done";
+      monitor.changed();
+    };
+    const send = async (value: {
+      type: string;
+      text?: string;
+      rate?: number;
+      pcm?: string;
+    }) => {
+      if (value.type !== "audio") observed(value);
+      else if (turn.state !== "sending") {
+        turn.state = "sending";
+        monitor.changed();
+      }
+      await event(res, value);
+    };
     const timeout = setTimeout(
       () => controller.abort(new Error("Turn timed out")),
       120000,
@@ -137,12 +264,16 @@ export function createBridge(config: BridgeConfig, services: Services) {
     const startedAt = performance.now();
     const timing: Record<string, number> = {};
     try {
+      audio = services.audioFor?.(settings) || services.audio;
       const chunks: Buffer[] = [];
       let total = 0;
       for await (const chunk of req) {
         controller.signal.throwIfAborted();
         total += chunk.length;
         if (total > MAX_WAV_BYTES) {
+          turn.state = "error";
+          turn.error = "录音超过 20 秒限制";
+          monitor.log("error", id, turn.error);
           res.writeHead(413);
           res.end("Recording exceeds 20 seconds");
           return;
@@ -163,17 +294,17 @@ export function createBridge(config: BridgeConfig, services: Services) {
         "Content-Type": "application/x-ndjson; charset=utf-8",
         "Cache-Control": "no-store",
       });
-      await event(res, { type: "accepted" });
+      await send({ type: "accepted" });
       const transcript = config.demo
         ? "你好，小螃蟹。"
-        : await services.audio.transcribe(wav, controller.signal);
+        : await audio.transcribe(wav, controller.signal);
       if (!transcript.trim()) throw new Error("No speech recognized");
       timing.stt_ms = Math.round(performance.now() - startedAt);
-      await event(res, { type: "transcript", text: transcript });
+      await send({ type: "transcript", text: transcript });
       let answer: string;
       if (config.demo) {
         answer = "我是小螃蟹！设备连接、字幕和音频链路正常。";
-        await event(res, { type: "text_delta", text: answer });
+        await send({ type: "text_delta", text: answer });
       } else {
         // Bound idle sessions to avoid unbounded memory use from device IDs.
         for (const [key, used] of lastUsed)
@@ -186,7 +317,7 @@ export function createBridge(config: BridgeConfig, services: Services) {
         if (!agents.has(id)) {
           if (agents.size >= 16)
             throw new Error("Too many sessions; reset an idle device");
-          agents.set(id, services.agent(id));
+          agents.set(id, services.agent(id, settings));
         }
         const promise = agents.get(id)!;
         let agent: Agent;
@@ -207,8 +338,10 @@ export function createBridge(config: BridgeConfig, services: Services) {
             // Pi callback is synchronous. Small text deltas are bounded by the 4 KiB answer budget.
             if (res.writableLength > 65536)
               controller.abort(new Error("Device is not consuming replies"));
-            if (!controller.signal.aborted && !res.destroyed)
+            if (!controller.signal.aborted && !res.destroyed) {
+              observed({ type: "text_delta", text });
               res.write(JSON.stringify({ type: "text_delta", text }) + "\n");
+            }
           },
           controller.signal,
         );
@@ -216,7 +349,7 @@ export function createBridge(config: BridgeConfig, services: Services) {
       }
       timing.reply_ms = Math.round(performance.now() - startedAt);
       answer = [...answer].slice(0, 1000).join("");
-      await event(res, { type: "reply", text: answer });
+      await send({ type: "reply", text: answer });
       let pcm: Buffer | null;
       if (config.demo) {
         pcm = Buffer.alloc(16000);
@@ -227,13 +360,15 @@ export function createBridge(config: BridgeConfig, services: Services) {
           );
       } else {
         try {
-          pcm = await services.audio.speak(answer, controller.signal);
+          pcm = settings.ttsEnabled
+            ? await audio.speak(answer, controller.signal)
+            : null;
         } catch (e) {
           controller.signal.throwIfAborted();
           pcm = null;
-          await event(res, {
+          await send({
             type: "warning",
-            text: "TTS unavailable; text reply only",
+            text: "语音合成失败，仅显示文字：" + monitor.clean(displayError(e)),
           });
         }
       }
@@ -241,13 +376,14 @@ export function createBridge(config: BridgeConfig, services: Services) {
       if (pcm)
         for (let at = 0; at < pcm.length; at += 6400) {
           controller.signal.throwIfAborted();
-          await event(res, {
+          await send({
             type: "audio",
             rate: 16000,
             pcm: pcm.subarray(at, at + 6400).toString("base64"),
           });
         }
       timing.total_ms = Math.round(performance.now() - startedAt);
+      turn.timing = { ...timing };
       console.info(
         JSON.stringify({
           device: id,
@@ -255,19 +391,28 @@ export function createBridge(config: BridgeConfig, services: Services) {
           audio_ms: pcm ? Math.round(pcm.length / 32) : 0,
         }),
       );
-      await event(res, { type: "done" });
+      await send({ type: "done" });
       res.end();
     } catch (e) {
+      turn.state = controller.signal.aborted ? "cancelled" : "error";
+      turn.error = controller.signal.aborted
+        ? "已取消或处理超时，请重试"
+        : monitor.clean(displayError(e));
+      monitor.log(
+        controller.signal.aborted ? "warning" : "error",
+        id,
+        turn.error,
+      );
       if (!res.headersSent) {
         res.writeHead(400);
-        res.end(e instanceof Error ? e.message : "Invalid request");
+        res.end(turn.error);
       } else if (!res.destroyed) {
         res.write(
           JSON.stringify({
             type: "error",
             text: controller.signal.aborted
               ? "已取消或处理超时，请重试"
-              : displayError(e),
+              : turn.error,
           }) + "\n",
         );
         res.end();
@@ -275,14 +420,23 @@ export function createBridge(config: BridgeConfig, services: Services) {
     } finally {
       clearTimeout(timeout);
       active.delete(id);
+      if (turn.state === "upload") turn.state = "error";
+      monitor.touch(id, { processing: false });
     }
   });
   server.headersTimeout = 15000;
   server.requestTimeout = 30000;
   server.on("close", () => {
+    control.close();
     for (const c of active.values()) c.abort();
     for (const a of agents.values())
       void a.then((x) => x.dispose()).catch(() => {});
   });
+  // SSE connections need closing before server.close() can finish.
+  const close = server.close.bind(server);
+  server.close = ((callback?: (err?: Error) => void) => {
+    control.close();
+    return close(callback);
+  }) as typeof server.close;
   return server;
 }

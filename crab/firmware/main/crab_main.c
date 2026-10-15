@@ -434,6 +434,39 @@ static void send_turn(uint8_t *wav, size_t bytes) {
       fail("连接失败或超时，请检查电脑服务");
   }
 }
+// A separate low-priority connection reports liveness without touching voice I/O.
+static void heartbeat_task(void *unused) {
+  (void)unused;
+  for (;;) {
+    if (atomic_load(&wifi_up) && url[0] && token[0]) {
+      char endpoint[288], auth[144], body[256];
+      snprintf(endpoint, sizeof(endpoint), "%s/v1/status", url);
+      snprintf(auth, sizeof(auth), "Bearer %s", token);
+      muse_power_t power = muse_state_power();
+      float elapsed;
+      snprintf(body, sizeof(body),
+               "{\"battery\":%d,\"usb\":%s,\"mode\":%d,\"uptime_ms\":%lld,\"free_internal\":%u}",
+               power.battery_pct, power.usb ? "true" : "false",
+               muse_state_mode(&elapsed),
+               (long long)(esp_timer_get_time() / 1000),
+               (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+      esp_http_client_config_t cfg = {.url = endpoint, .timeout_ms = 2000,
+                                      .buffer_size = 512};
+      esp_http_client_handle_t client = esp_http_client_init(&cfg);
+      if (client) {
+        esp_http_client_set_method(client, HTTP_METHOD_POST);
+        esp_http_client_set_header(client, "Authorization", auth);
+        esp_http_client_set_header(client, "X-Device-ID", device_id);
+        esp_http_client_set_header(client, "Content-Type", "application/json");
+        esp_http_client_set_post_field(client, body, strlen(body));
+        // Failure is deliberately silent on the device: the next heartbeat retries.
+        esp_http_client_perform(client);
+        esp_http_client_cleanup(client);
+      }
+    }
+    vTaskDelay(pdMS_TO_TICKS(10000));
+  }
+}
 static void voice_task(void *unused) {
   (void)unused;
   uint8_t *wav = heap_caps_malloc(44 + MAX_RECORD * 2,
@@ -672,6 +705,8 @@ void app_main(void) {
     start_wifi();
   } else
     text_set("请通过 USB 配置网络和电脑服务");
+  if (xTaskCreate(heartbeat_task, "crab_heartbeat", 5120, NULL, 2, NULL) != pdPASS)
+    abort();
   vTaskDelay(pdMS_TO_TICKS(1200));
   muse_state_set_mode(MUSE_MODE_IDLE);
 }

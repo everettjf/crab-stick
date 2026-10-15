@@ -4,6 +4,7 @@ import {
   DefaultResourceLoader,
   SettingsManager,
   getAgentDir,
+  ModelRuntime,
   type AgentSession,
 } from "@earendil-works/pi-coding-agent";
 
@@ -97,4 +98,18 @@ class PiAgent implements Agent {
   dispose() {
     this.session.dispose();
   }
+}
+
+export async function listPiModels(env: NodeJS.ProcessEnv) {
+  const dir = env.PI_AGENT_DIR || getAgentDir();
+  const runtime = await ModelRuntime.create({
+    modelsPath: `${dir}/models.json`,
+    authPath: `${dir}/auth.json`,
+    allowModelNetwork: false,
+  });
+  return (await runtime.getAvailable()).map((m) => ({
+    provider: m.provider,
+    id: m.id,
+    name: m.name,
+  }));
 }

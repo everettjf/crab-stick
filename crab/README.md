@@ -16,10 +16,23 @@ The verified setup is **StickS3 → macOS bridge → local faster-whisper → Pi
 ## Current verification
 
 - ESP-IDF 6.0.1 StickS3 build passes; application 2.12 MiB, 70% partition space free.
-- Bridge TypeScript compilation and eight Node/two Python tests pass, including real Pi SDK against a local test model server, continuous conversation, no enabled tools, Chinese transcript, PCM transport, invalid input, authentication, and cancellation.
+- Bridge TypeScript compilation and fourteen Node/two Python tests pass, including real Pi SDK against a local test model server, continuous conversation, no enabled tools, Chinese transcript, PCM transport, invalid input, authentication, and cancellation.
 - All eight avatar animations compile and run under address/undefined-behavior sanitizers; GIF previews can be regenerated.
 - macOS Chinese TTS produces correct 16 kHz mono PCM on this computer.
 - Connected StickS3 was backed up, flashed, joined Wi-Fi and passed audio loopback, recording-limit, cancellation and reconnection checks. DeepSeek/Pi/STT/TTS ran with real services. The user confirmed accurate near-mouth Chinese recognition, the crab display, reply captions and audible speech in two real conversations. Battery-only runtime and extended soak testing remain pending; see [validation details](VALIDATION.md).
+
+## Browser console
+
+With the bridge running, open **http://127.0.0.1:8787/** (or the computer's LAN address) and sign in with `CRAB_TOKEN` from the local `bridge/.env`. The token stays in page memory, is cleared on refresh/disconnect, and is never embedded in the page or URL.
+
+- **Devices:** heartbeat freshness, battery/USB, firmware mode, uptime and latest activity. New firmware reports every 10 s; after 35 s without a heartbeat it is marked stale. Old firmware still sends turns but cannot report current liveness/battery state.
+- **Conversation:** live transcript, streamed reply, processing stages and timings. “Reply sent” means the bridge finished sending; playback state comes from the device heartbeat.
+- **Logs:** errors, cancellations, TTS warnings and settings changes, with level filtering and credential redaction. Retention is bounded to 50 devices, 100 turns and 200 log entries, in memory only.
+- **Settings:** select a credential-configured Pi model; tune bundled faster-whisper model/language and macOS voice/rate; enable/disable TTS. Speech APIs support language/voice where applicable. Custom command arguments remain configured on the computer; the browser cannot edit keys, endpoints or executables.
+
+Settings persist privately in `bridge/data/console-settings.json`, override environment defaults on restart, and apply next turn. To restore environment defaults, stop the bridge and move that file aside. Saving is blocked while any device is processing. Switching model clears all Pi conversation contexts; speech-only changes retain them. First use of a new Whisper model may download it.
+
+The console shares the bridge port. State, SSE and settings APIs require bearer authentication. SSE reconnects automatically and restores a current snapshot. The public login page/static assets contain no private state; trusted-LAN HTTP limitations still apply.
 
 ## Layout
 
@@ -172,6 +185,19 @@ python3 ../esp32/tools/muse/make_gifs.py --src avatar/crab_pixel.c avatar/previe
 ```
 
 The renderer and build use the original crab, not Jollybot. No Muse call is needed to generate it.
+
+## Console API
+
+These routes require `Authorization: Bearer CRAB_TOKEN`, without a device header:
+
+| Route | Purpose |
+|---|---|
+| `GET /api/state` | Device, conversation, log and settings snapshot |
+| `GET /api/events` | SSE snapshots; reconnect receives the current state |
+| `GET /api/models` | Pi model choices with configured credentials |
+| `PUT /api/settings` | Validate/persist all settings; 409 during active turns |
+
+Firmware reports authenticated JSON to `POST /v1/status` with `X-Device-ID`, `battery`, `usb`, `mode`, `uptime_ms` and `free_internal`. Heartbeats do not change conversation context.
 
 ## Protocol
 
