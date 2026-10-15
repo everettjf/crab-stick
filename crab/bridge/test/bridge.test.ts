@@ -175,3 +175,71 @@ test("cancellation reaches active agent; same device cannot overlap", async () =
     server.closeAllConnections();
   }
 });
+
+test("no-speech failure is readable Chinese and releases the device", async () => {
+  const server = createBridge(
+    { token, dataDir: "/tmp/crab-test", saveRecordings: false, demo: false },
+    {
+      audio: { transcribe: async () => "", speak: async () => null },
+      agent: async () => {
+        throw new Error("must not invoke agent for silence");
+      },
+    },
+  );
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const url = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+  try {
+    for (let i = 0; i < 2; i++) {
+      const r = await fetch(url + "/v1/turn", {
+        method: "POST",
+        headers,
+        body: wav(),
+      });
+      assert.equal(r.status, 200);
+      const events = (await r.text())
+        .trim()
+        .split("\n")
+        .map((x) => JSON.parse(x));
+      assert.equal(events.at(-1).text, "没有听清，请靠近麦克风再说一次");
+    }
+  } finally {
+    server.close();
+    server.closeAllConnections();
+  }
+});
+
+test("TTS failure preserves text reply and completes the turn", async () => {
+  const server = createBridge(
+    { token, dataDir: "/tmp/crab-test", saveRecordings: false, demo: false },
+    {
+      audio: {
+        transcribe: async () => "你好",
+        speak: async () => {
+          throw new Error("TTS offline");
+        },
+      },
+      agent: async () => ({ reply: async () => "你好！", dispose() {} }),
+    },
+  );
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const url = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+  try {
+    const r = await fetch(url + "/v1/turn", {
+      method: "POST",
+      headers,
+      body: wav(),
+    });
+    const events = (await r.text())
+      .trim()
+      .split("\n")
+      .map((x) => JSON.parse(x));
+    assert.equal(events.find((x) => x.type === "reply").text, "你好！");
+    assert.ok(events.some((x) => x.type === "warning"));
+    assert.equal(events.at(-1).type, "done");
+  } finally {
+    server.close();
+    server.closeAllConnections();
+  }
+});

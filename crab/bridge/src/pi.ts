@@ -31,7 +31,7 @@ export async function createPiAgent(
     noSkills: true,
     noPromptTemplates: true,
     systemPromptOverride: () =>
-      "你是一只叫 Crab 的随身螃蟹助手。默认用简体中文，回答简短清楚，适合小屏幕和语音，通常不超过150字。不要假装执行了没有工具支持的操作。",
+      "你是名叫小螃蟹的随身语音助手。默认用简体中文，通常只回答一两句、最多60个汉字，不主动自我介绍，不使用Markdown或表情符号。你当前只能聊天和回答问题，没有文件访问、持久记事、设置提醒、联网搜索或控制设备的工具；不要主动建议或声称能执行这些操作。",
   });
   await resourceLoader.reload();
   const { session } = await createAgentSession({

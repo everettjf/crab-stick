@@ -17,27 +17,44 @@ os.umask(0o077)
 
 
 def exchange(port, command, prefix="@crab ", seconds=8):
-    import serial
-    device = serial.Serial()
-    device.port = port
-    device.baudrate = 115200
-    device.timeout = 0.2
-    device.dtr = False
-    device.rts = False
-    device.open()
+    # POSIX file I/O avoids pyserial's open-time DTR/RTS transitions, which can
+    # reset native ESP32 USB. Keep HUPCL off so close doesn't reset it either.
+    import select
+    import termios
+    fd = os.open(port, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
     try:
-        device.reset_input_buffer()
+        attrs = termios.tcgetattr(fd)
+        attrs[0] = 0
+        attrs[1] = 0
+        attrs[2] &= ~(termios.HUPCL | termios.PARENB | termios.CSTOPB | termios.CSIZE)
+        attrs[2] |= termios.CLOCAL | termios.CREAD | termios.CS8
+        attrs[3] = 0
+        attrs[4] = attrs[5] = termios.B115200
+        attrs[6][termios.VMIN] = 0
+        attrs[6][termios.VTIME] = 0
+        termios.tcsetattr(fd, termios.TCSANOW, attrs)
+        termios.tcflush(fd, termios.TCIFLUSH)
         message = command if isinstance(command, str) else json.dumps(command, ensure_ascii=False)
-        device.write((message + "\n").encode())
-        device.flush()
-        until = time.monotonic() + seconds
-        while time.monotonic() < until:
-            line = device.readline().decode("utf-8", errors="replace").strip()
-            if line.startswith(prefix):
-                return json.loads(line[len(prefix):])
+        pending = (message + "\n").encode()
+        deadline = time.monotonic() + seconds
+        while pending and time.monotonic() < deadline:
+            if select.select([], [fd], [], 0.2)[1]:
+                pending = pending[os.write(fd, pending):]
+        buffer = b""
+        while time.monotonic() < deadline:
+            if not select.select([fd], [], [], 0.2)[0]:
+                continue
+            buffer += os.read(fd, 4096)
+            while b"\n" in buffer:
+                line, buffer = buffer.split(b"\n", 1)
+                text = line.decode("utf-8", errors="replace").strip()
+                if text.startswith(prefix):
+                    return json.loads(text[len(prefix):])
+            if len(buffer) > 65536:
+                raise RuntimeError("Device returned an oversized serial line")
         raise RuntimeError("Device did not answer. Check the port and firmware.")
     finally:
-        device.close()
+        os.close(fd)
 
 
 def esptool(port, *args):

@@ -1,6 +1,6 @@
 # Crab 🦀 — independent StickS3 + Pi companion
 
-[中文操作步骤：你需要做什么](QUICKSTART.zh-CN.md)
+[中文操作步骤：你需要做什么](QUICKSTART.zh-CN.md) · [实际验收记录](VALIDATION.md)
 
 This folder contains a standalone StickS3 firmware, a TypeScript computer bridge powered by Pi, and an original animated crab. It does not need the Muse app, Muse account, SDK token, or Muse subscription. The existing `esp32/` and `linux/` applications are unchanged.
 
@@ -12,10 +12,10 @@ StickS3 (captions + 16 kHz PCM) ← computer bridge ← text + optional TTS
 ## Current verification
 
 - ESP-IDF 6.0.1 StickS3 build passes; application 2.12 MiB, 70% partition space free.
-- Bridge TypeScript compilation and tests pass, including real Pi SDK against a local test model server, continuous conversation, no enabled tools, Chinese transcript, PCM transport, invalid input, authentication, and cancellation.
+- Bridge TypeScript compilation and eight Node/two Python tests pass, including real Pi SDK against a local test model server, continuous conversation, no enabled tools, Chinese transcript, PCM transport, invalid input, authentication, and cancellation.
 - All eight avatar animations compile and run under address/undefined-behavior sanitizers; GIF previews can be regenerated.
 - macOS Chinese TTS produces correct 16 kHz mono PCM on this computer.
-- Physical recording, speaker, USB configuration, battery behavior and Wi-Fi reconnection have **not** been tested on a connected StickS3 yet. Local faster-whisper recognized synthesized “你好，我是小螃蟹” as “你好 我是小螃蟹”. Real microphone accuracy and model-provider latency still need physical/provider testing.
+- Connected StickS3 was backed up, flashed, joined Wi-Fi and passed audio loopback, recording-limit, cancellation and reconnection checks. DeepSeek/Pi/STT/TTS ran with real services. Near-mouth human Chinese recognition/display acceptance and battery-only runtime remain pending; see [validation details](VALIDATION.md).
 
 ## Layout
 
@@ -56,6 +56,8 @@ python3 ../tools/smoke.py
 Demo mode tests transport, **not** speech recognition or intelligence.
 
 ## 2. Configure Pi and real audio
+
+For DeepSeek run `python3 ../tools/setup_deepseek.py` from `bridge/`; it prompts for the key privately and configures a local Pi provider without changing unrelated provider entries. Then restart the bridge.
 
 For real conversation set `CRAB_DEMO=false`. The bridge embeds the **Pi SDK**, rather than scraping CLI output. It inherits Pi's configured model/credentials from `~/.pi/agent`, or `PI_AGENT_DIR`. Set both `PI_PROVIDER` and `PI_MODEL` to select a particular model. To configure credentials interactively:
 
@@ -172,9 +174,12 @@ Audio chunks are at most 6,400 bytes before base64. Errors after acceptance are 
 
 ## Remaining acceptance work
 
-1. Attach physical StickS3, verify identity, back up full flash, flash and inspect boot logs.
-2. USB configuration + Wi-Fi join, short/20 s recordings, interruption, reconnection, page navigation and speaker playback.
-3. Configure real Pi provider and STT; compare Chinese transcription against known phrases and listen to recorded WAV.
-4. Check all eight animations on the actual display and measure normal-use battery runtime.
+The device has been backed up/flashed and the real provider/audio pipeline exercised. See [VALIDATION.md](VALIDATION.md) for evidence and limits. User confirmation of physical push-to-talk, near-mouth Chinese recognition, display appearance and audible speech is still needed, along with battery-only timeouts/button wake and runtime measurements. A timer-based deep-sleep recovery cycle has passed on the board.
+
+## USB diagnostics
+
+The local USB JSON console also accepts `sleep_test` (deep sleep then automatic 3 s timer wake), `record` with `milliseconds` (200–20000), `cancel`, `audio_test`, `reconnect`, and `pet`. These are for deliberate testing, not a network control API. `audio_test` plays a series of tones at moderate volume. `status` includes uptime, heap, mode, battery/USB and current caption. Avoid running multiple serial clients at once.
+
+Run the host serial regression tests with `python3 -m unittest discover -s ../tools/tests -v` from `bridge/`.
 
 Original code in this folder is MIT (see `LICENSE`). Reused upstream files retain their original headers/licenses; the Chinese font uses upstream's existing provenance. Pi is a separate MIT dependency.

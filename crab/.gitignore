@@ -11,3 +11,4 @@ avatar/previews/
 backups/
 tools/__pycache__/
 tools/.venv/
+__pycache__/

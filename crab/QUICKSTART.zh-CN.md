@@ -1,6 +1,6 @@
 # StickS3 螃蟹助手：你需要做什么
 
-代码已实现，电脑端与固件编译测试已通过，尚未做 StickS3 实机验收。第一轮先验证固定字幕和测试音，再开启真实 AI 对话。
+代码已实现，已在本机连接的 StickS3 上完成备份、烧录、联网与部分音频/中断/重连测试，并接通真实 DeepSeek。仍需近距离人声、屏幕与电池验收，详见 [测试记录](VALIDATION.md)。首次安装其他设备时，建议先用固定字幕和测试音验证。
 
 ## 你先准备三件事
 
@@ -21,7 +21,9 @@ cd /Users/xnu/github/muse/muse-gadget-sdk/crab/bridge
 
 第一次使用其他电脑时，先运行 `npm ci --ignore-scripts`。
 
-在 Pi 中执行 `/login`，完成模型服务登录，再用 `/model` 选择模型。桥接服务使用 `~/.pi/agent` 的凭据和设置。也可以在 `bridge/.env` 设置 `PI_PROVIDER` 和 `PI_MODEL`，明确指定模型。本地模型按 [Pi 的 models.json 文档](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/models.md) 配置。
+如果使用 DeepSeek，可直接在 `crab/bridge` 运行 `python3 ../tools/setup_deepseek.py`，按隐藏提示输入密钥；本机已经配置好了。
+
+使用其他模型服务时，在 Pi 中执行 `/login`，完成模型服务登录，再用 `/model` 选择模型。桥接服务使用 `~/.pi/agent` 的凭据和设置。也可以在 `bridge/.env` 设置 `PI_PROVIDER` 和 `PI_MODEL`，明确指定模型。本地模型按 [Pi 的 models.json 文档](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/models.md) 配置。
 
 ## 启动电脑服务，先用 demo 验证
 

@@ -8,6 +8,8 @@
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_netif.h"
+#include "esp_sleep.h"
+#include "esp_system.h"
 #include "esp_timer.h"
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
@@ -29,6 +31,9 @@ const muse_board_t *muse_board;
 static char ssid[33], password[65], url[256], token[129], device_id[32];
 static atomic_bool wifi_up, held, busy, cancelled;
 static atomic_uint page;
+static atomic_uint record_ms;
+static atomic_bool audio_test;
+static atomic_bool sleep_test;
 static TaskHandle_t voice_handle;
 static portMUX_TYPE text_lock = portMUX_INITIALIZER_UNLOCKED;
 static char reply[4096];
@@ -70,6 +75,18 @@ static void load_config(void) {
   nvs_get_str(h, "token", token, &n);
   nvs_close(h);
 }
+static bool begin_recording(unsigned ms) {
+  bool expected = false;
+  if (!atomic_load(&wifi_up) ||
+      !atomic_compare_exchange_strong(&busy, &expected, true))
+    return false;
+  atomic_store(&cancelled, false);
+  atomic_store(&record_ms, ms);
+  atomic_store(&held, true);
+  muse_state_poke();
+  xTaskNotifyGive(voice_handle);
+  return true;
+}
 static void serial_task(void *unused) {
   (void)unused;
   char line[1024];
@@ -103,11 +120,73 @@ static void serial_task(void *unused) {
     }
     const cJSON *cmd = cJSON_GetObjectItemCaseSensitive(j, "command");
     if (cJSON_IsString(cmd) && !strcmp(cmd->valuestring, "status")) {
-      printf("@crab {\"board\":\"M5Stack "
-             "StickS3\",\"configured\":%s,\"wifi\":%s,\"busy\":%s}\n",
-             ssid[0] && url[0] && token[0] ? "true" : "false",
-             atomic_load(&wifi_up) ? "true" : "false",
-             atomic_load(&busy) ? "true" : "false");
+      cJSON *report = cJSON_CreateObject();
+      cJSON_AddStringToObject(report, "board", "M5Stack StickS3");
+      cJSON_AddBoolToObject(report, "configured",
+                            ssid[0] && url[0] && token[0]);
+      cJSON_AddBoolToObject(report, "wifi", atomic_load(&wifi_up));
+      cJSON_AddBoolToObject(report, "busy", atomic_load(&busy));
+      cJSON_AddNumberToObject(report, "uptime_ms", esp_timer_get_time() / 1000);
+      cJSON_AddNumberToObject(report, "reset_reason", esp_reset_reason());
+      cJSON_AddNumberToObject(report, "free_internal",
+                              heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+      cJSON_AddNumberToObject(report, "free_psram",
+                              heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+      float elapsed;
+      cJSON_AddNumberToObject(report, "mode", muse_state_mode(&elapsed));
+      muse_power_t power = muse_state_power();
+      cJSON_AddNumberToObject(report, "battery", power.battery_pct);
+      cJSON_AddBoolToObject(report, "usb", power.usb);
+      char caption[sizeof(reply)];
+      portENTER_CRITICAL(&text_lock);
+      strlcpy(caption, reply, sizeof(caption));
+      portEXIT_CRITICAL(&text_lock);
+      cJSON_AddStringToObject(report, "caption", caption);
+      char *encoded = cJSON_PrintUnformatted(report);
+      if (encoded) {
+        printf("@crab %s\n", encoded);
+        free(encoded);
+      }
+      cJSON_Delete(report);
+    } else if (cJSON_IsString(cmd) && !strcmp(cmd->valuestring, "record")) {
+      const cJSON *duration =
+          cJSON_GetObjectItemCaseSensitive(j, "milliseconds");
+      if (!cJSON_IsNumber(duration) || duration->valueint < 200 ||
+          duration->valueint > 20000 || !begin_recording(duration->valueint))
+        puts("@crab {\"ok\":false,\"error\":\"busy, offline or invalid "
+             "duration\"}");
+      else
+        puts("@crab {\"ok\":true}");
+    } else if (cJSON_IsString(cmd) && !strcmp(cmd->valuestring, "cancel")) {
+      atomic_store(&cancelled, true);
+      atomic_store(&held, false);
+      puts("@crab {\"ok\":true}");
+    } else if (cJSON_IsString(cmd) && !strcmp(cmd->valuestring, "sleep_test")) {
+      bool expected = false;
+      if (atomic_compare_exchange_strong(&busy, &expected, true)) {
+        atomic_store(&sleep_test, true);
+        puts("@crab {\"ok\":true,\"wake_after_ms\":3000}");
+      } else
+        puts("@crab {\"ok\":false,\"error\":\"busy\"}");
+    } else if (cJSON_IsString(cmd) && !strcmp(cmd->valuestring, "audio_test")) {
+      bool expected = false;
+      if (atomic_compare_exchange_strong(&busy, &expected, true)) {
+        atomic_store(&audio_test, true);
+        xTaskNotifyGive(voice_handle);
+        puts("@crab {\"ok\":true}");
+      } else
+        puts("@crab {\"ok\":false,\"error\":\"busy\"}");
+    } else if (cJSON_IsString(cmd) && !strcmp(cmd->valuestring, "reconnect")) {
+      if (atomic_load(&busy))
+        puts("@crab {\"ok\":false,\"error\":\"busy\"}");
+      else {
+        esp_wifi_disconnect();
+        puts("@crab {\"ok\":true}");
+      }
+    } else if (cJSON_IsString(cmd) && !strcmp(cmd->valuestring, "pet")) {
+      muse_state_make_happy();
+      atomic_fetch_add(&page, 1);
+      puts("@crab {\"ok\":true}");
     } else if (cJSON_IsString(cmd) && !strcmp(cmd->valuestring, "configure")) {
       const cJSON *s = cJSON_GetObjectItemCaseSensitive(j, "ssid"),
                   *p = cJSON_GetObjectItemCaseSensitive(j, "password"),
@@ -269,7 +348,7 @@ static void send_turn(uint8_t *wav, size_t bytes) {
   snprintf(endpoint, sizeof(endpoint), "%s/v1/turn", url);
   snprintf(auth, sizeof(auth), "Bearer %s", token);
   esp_http_client_config_t cfg = {.url = endpoint,
-                                  .timeout_ms = 1000,
+                                  .timeout_ms = 10000,
                                   .buffer_size = 2048,
                                   .keep_alive_enable = false};
   esp_http_client_handle_t client = esp_http_client_init(&cfg);
@@ -284,20 +363,34 @@ static void send_turn(uint8_t *wav, size_t bytes) {
   char *line = heap_caps_malloc(LINE_CAP, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   size_t used = 0;
   bool done = false, ok = line != NULL;
-  if (ok)
-    ok = esp_http_client_open(client, bytes) == ESP_OK;
+  const char *stage = "memory";
+  int result = 0;
+  size_t received = 0;
+  if (ok) {
+    stage = "connect";
+    result = esp_http_client_open(client, bytes);
+    ok = result == ESP_OK;
+  }
+  stage = ok ? "upload" : stage;
   for (size_t at = 0; ok && at < bytes && !atomic_load(&cancelled);) {
     int n = esp_http_client_write(client, (const char *)wav + at,
                                   bytes - at > 4096 ? 4096 : bytes - at);
-    if (n <= 0)
+    if (n <= 0) {
+      result = n;
       ok = false;
-    else
+    } else
       at += n;
   }
   if (ok && !atomic_load(&cancelled)) {
-    esp_http_client_fetch_headers(client);
-    ok = esp_http_client_get_status_code(client) == 200;
+    stage = "headers";
+    // Allow Wi-Fi retransmissions during connection/upload/header exchange.
+    // Reads below use a shorter timeout so cancellation remains responsive.
+    result = esp_http_client_fetch_headers(client);
+    ok = result >= 0 && esp_http_client_get_status_code(client) == 200;
   }
+  esp_http_client_set_timeout_ms(client, 1000);
+  if (ok)
+    stage = "response";
   int64_t deadline = esp_timer_get_time() + 120000000;
   while (ok && !done && !atomic_load(&cancelled) &&
          esp_timer_get_time() < deadline) {
@@ -306,9 +399,11 @@ static void send_turn(uint8_t *wav, size_t bytes) {
     if (n == -ESP_ERR_HTTP_EAGAIN)
       continue;
     if (n < 0) {
+      result = n;
       ok = false;
       break;
     }
+    received += n;
     if (n == 0) {
       if (esp_http_client_is_complete_data_received(client))
         break;
@@ -325,6 +420,9 @@ static void send_turn(uint8_t *wav, size_t bytes) {
         ok = false;
     }
   }
+  ESP_LOGI("crab", "turn stage=%s result=%d status=%d received=%u done=%d cancelled=%d",
+           stage, result, esp_http_client_get_status_code(client),
+           (unsigned)received, done, atomic_load(&cancelled));
   esp_http_client_close(client);
   esp_http_client_cleanup(client);
   free(line);
@@ -350,11 +448,25 @@ static void voice_task(void *unused) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     atomic_store(&page, 0);
     muse_audio_power(true);
+    if (atomic_exchange(&audio_test, false)) {
+      muse_state_set_mode(MUSE_MODE_LISTENING);
+      text_set("音频硬件测试…");
+      muse_audio_selftest();
+      muse_audio_loopback_test(35);
+      muse_audio_power(false);
+      muse_state_set_mode(MUSE_MODE_IDLE);
+      text_set("音频测试完成，详情见 USB 日志");
+      atomic_store(&busy, false);
+      continue;
+    }
     muse_state_set_mode(MUSE_MODE_LISTENING);
     text_set("正在听…松开发送");
     size_t frames = 0;
+    unsigned timed_ms = atomic_load(&record_ms);
+    int64_t record_until = esp_timer_get_time() + (int64_t)timed_ms * 1000;
     while (atomic_load(&held) && !atomic_load(&cancelled) &&
-           frames < MAX_RECORD) {
+           frames < MAX_RECORD &&
+           (!timed_ms || esp_timer_get_time() < record_until)) {
       if (muse_audio_read(buf, MUSE_AUDIO_CHUNK) != ESP_OK) {
         atomic_store(&cancelled, true);
         fail("录音失败");
@@ -384,6 +496,14 @@ static void input_task(void *unused) {
   int64_t side_down = 0;
   bool side_long = false;
   for (;;) {
+    if (atomic_exchange(&sleep_test, false)) {
+      muse_state_set_mode(MUSE_MODE_OFF);
+      text_set("休眠测试，三秒后唤醒");
+      vTaskDelay(pdMS_TO_TICKS(500));
+      ESP_ERROR_CHECK(esp_sleep_enable_timer_wakeup(3000000));
+      muse_board->power_off();
+      atomic_store(&busy, false);
+    }
     unsigned b = muse_board->poll_buttons();
     if (!atomic_load(&busy) && muse_state_on_battery() &&
         muse_state_idle_secs() > 120) {
@@ -405,10 +525,7 @@ static void input_task(void *unused) {
       else if (!atomic_load(&wifi_up))
         fail("Wi-Fi 尚未连接");
       else {
-        atomic_store(&cancelled, false);
-        atomic_store(&held, true);
-        atomic_store(&busy, true);
-        xTaskNotifyGive(voice_handle);
+        begin_recording(0);
       }
     }
     if (b & MUSE_BTN_TALK_RELEASE)
@@ -548,7 +665,7 @@ void app_main(void) {
     abort();
   if (xTaskCreate(input_task, "crab_input", 4096, NULL, 6, NULL) != pdPASS)
     abort();
-  if (xTaskCreate(serial_task, "crab_serial", 6144, NULL, 3, NULL) != pdPASS)
+  if (xTaskCreate(serial_task, "crab_serial", 10240, NULL, 3, NULL) != pdPASS)
     abort();
   if (ssid[0] && url[0] && token[0]) {
     text_set("正在连接 Wi-Fi…");

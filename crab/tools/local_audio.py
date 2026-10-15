@@ -19,6 +19,7 @@ def main():
     tts.add_argument("text")
     tts.add_argument("output", type=Path)
     tts.add_argument("--voice", default="Tingting")
+    tts.add_argument("--rate", type=int, default=210)
     args = p.parse_args()
     if args.action == "stt":
         from faster_whisper import WhisperModel
@@ -33,7 +34,7 @@ def main():
             sys.exit("This TTS adapter requires macOS; configure a TTS API or another command on other systems")
         with tempfile.TemporaryDirectory(prefix="crab-tts-") as d:
             wav = str(Path(d) / "speech.wav")
-            subprocess.run(["say", "-v", args.voice, "-o", wav, "--file-format=WAVE", "--data-format=LEI16@16000", "--", args.text], check=True)
+            subprocess.run(["say", "-v", args.voice, "-r", str(args.rate), "-o", wav, "--file-format=WAVE", "--data-format=LEI16@16000", "--", args.text], check=True)
             with wave.open(wav, "rb") as audio:
                 if audio.getnchannels() != 1 or audio.getsampwidth() != 2 or audio.getframerate() != 16000:
                     sys.exit("Unexpected speech format")

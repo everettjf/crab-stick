@@ -19,6 +19,15 @@ export type Services = {
   audio: Pick<AudioServices, "transcribe" | "speak">;
   agent: (id: string) => Promise<Agent>;
 };
+function displayError(error: unknown): string {
+  const message = error instanceof Error ? error.message : "对话失败，请重试";
+  if (/No speech recognized/i.test(message))
+    return "没有听清，请靠近麦克风再说一次";
+  if (/\b(401|403)\b/.test(message))
+    return "模型或语音服务认证失败，请检查电脑端配置";
+  return message.replace(/sk-[a-zA-Z0-9_-]+/g, "[redacted]").slice(0, 500);
+}
+
 export function createBridge(config: BridgeConfig, services: Services) {
   if (!/^[\x21-\x7e]{32,128}$/.test(config.token))
     throw new Error(
@@ -125,6 +134,8 @@ export function createBridge(config: BridgeConfig, services: Services) {
     res.on("close", () => {
       if (!res.writableFinished) controller.abort();
     });
+    const startedAt = performance.now();
+    const timing: Record<string, number> = {};
     try {
       const chunks: Buffer[] = [];
       let total = 0;
@@ -157,6 +168,7 @@ export function createBridge(config: BridgeConfig, services: Services) {
         ? "你好，小螃蟹。"
         : await services.audio.transcribe(wav, controller.signal);
       if (!transcript.trim()) throw new Error("No speech recognized");
+      timing.stt_ms = Math.round(performance.now() - startedAt);
       await event(res, { type: "transcript", text: transcript });
       let answer: string;
       if (config.demo) {
@@ -202,6 +214,7 @@ export function createBridge(config: BridgeConfig, services: Services) {
         );
         lastUsed.set(id, Date.now());
       }
+      timing.reply_ms = Math.round(performance.now() - startedAt);
       answer = [...answer].slice(0, 1000).join("");
       await event(res, { type: "reply", text: answer });
       let pcm: Buffer | null;
@@ -224,6 +237,7 @@ export function createBridge(config: BridgeConfig, services: Services) {
           });
         }
       }
+      timing.tts_ms = Math.round(performance.now() - startedAt);
       if (pcm)
         for (let at = 0; at < pcm.length; at += 6400) {
           controller.signal.throwIfAborted();
@@ -233,6 +247,14 @@ export function createBridge(config: BridgeConfig, services: Services) {
             pcm: pcm.subarray(at, at + 6400).toString("base64"),
           });
         }
+      timing.total_ms = Math.round(performance.now() - startedAt);
+      console.info(
+        JSON.stringify({
+          device: id,
+          ...timing,
+          audio_ms: pcm ? Math.round(pcm.length / 32) : 0,
+        }),
+      );
       await event(res, { type: "done" });
       res.end();
     } catch (e) {
@@ -244,10 +266,8 @@ export function createBridge(config: BridgeConfig, services: Services) {
           JSON.stringify({
             type: "error",
             text: controller.signal.aborted
-              ? "Cancelled or timed out"
-              : e instanceof Error
-                ? e.message
-                : "Turn failed",
+              ? "已取消或处理超时，请重试"
+              : displayError(e),
           }) + "\n",
         );
         res.end();

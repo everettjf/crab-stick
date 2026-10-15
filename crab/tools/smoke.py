@@ -15,8 +15,16 @@ p.add_argument("--url", default="http://127.0.0.1:8787")
 p.add_argument("--wav", help="Real 16 kHz mono PCM16 recording; omit only for demo mode")
 args = p.parse_args()
 if args.wav:
-    with open(args.wav, "rb") as f:
-        wav = f.read()
+    # Canonicalize standard WAV containers (macOS say may use an 18-byte fmt
+    # chunk); the device protocol uses the compact 44-byte PCM header.
+    with wave.open(args.wav, "rb") as recording:
+        if (recording.getnchannels(), recording.getsampwidth(), recording.getframerate()) != (1, 2, 16000):
+            raise SystemExit("Expected a 16 kHz mono PCM16 recording")
+        samples = recording.readframes(recording.getnframes())
+    out = io.BytesIO()
+    with wave.open(out, "wb") as canonical:
+        canonical.setnchannels(1); canonical.setsampwidth(2); canonical.setframerate(16000); canonical.writeframes(samples)
+    wav = out.getvalue()
 else:
     raw = b"".join(struct.pack("<h", int(math.sin(i * 2 * math.pi * 440 / 16000) * 1000)) for i in range(8000))
     out = io.BytesIO()
