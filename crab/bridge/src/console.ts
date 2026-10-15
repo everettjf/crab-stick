@@ -29,6 +29,7 @@ export function json(res: ServerResponse, value: unknown, status = 200) {
 }
 const assets: Record<string, [string, string]> = {
   "/": ["index.html", "text/html; charset=utf-8"],
+  "/i18n.js": ["i18n.js", "text/javascript; charset=utf-8"],
   "/console.js": ["console.js", "text/javascript; charset=utf-8"],
   "/console.css": ["console.css", "text/css; charset=utf-8"],
 };

@@ -110,7 +110,7 @@ test("console assets are public; state/settings/events require auth and reject f
   try {
     const page = await fetch(a.url);
     assert.equal(page.status, 200);
-    assert.match(await page.text(), /实时对话/);
+    assert.match(await page.text(), /Live conversations/);
     assert.match(
       page.headers.get("content-security-policy")!,
       /frame-ancestors 'none'/,

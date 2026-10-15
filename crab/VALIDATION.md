@@ -63,3 +63,9 @@ This checks serial stability, record cancellation, Wi-Fi reconnect and optional 
 - Production browser listed configured Pi models and saved a change to the built-in DeepSeek Flash provider and local speech rate 230. Replaying a private real recording completed STT/Pi/TTS, with its live transcript/reply visible in the browser and 5.77 s of PCM received by the host smoke client. The prior model selection and rate 210 were restored afterward. This replay validates the bridge, not physical speaker playback.
 - Restarted the production service with the console open: the browser automatically reconnected without re-entering its token, restored the current device snapshot and retained the saved model/voice settings. Prior transient conversation/log history cleared as designed.
 - Battery runtime, every installed voice/model combination and long-duration network stability remain unmeasured.
+
+## Console language validation
+
+- Default English UI with a Chinese/English toggle and a browser-local language preference. Transcript/reply text is preserved; language changes do not update speech settings or reconnect the device.
+- TypeScript build and 17 Node tests pass, including default locale, parameterized status/error translations, multiline static labels, numeric values, preference restoration and unavailable browser storage.
+- Browser verified default English, Chinese login/console, Chinese preference after refresh, dynamic device/status/save messages, and retention of an unsaved model choice across language switches. Finished with the English interface and original model/voice settings.

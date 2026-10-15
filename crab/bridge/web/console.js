@@ -1,5 +1,10 @@
 "use strict";
 const $ = (id) => document.getElementById(id);
+const t = (text) => window.CrabI18n.translate(text);
+function setText(id, text) {
+  $(id).dataset.uiText = text;
+  $(id).textContent = t(text);
+}
 let token = "",
   stream,
   latest,
@@ -21,11 +26,15 @@ const stages = {
 const modes = ["启动", "待机", "录音", "思考", "播放", "错误", "关闭", "开心"];
 function el(tag, text, cls) {
   const n = document.createElement(tag);
-  if (text !== undefined) n.textContent = text;
+  if (text !== undefined) n.textContent = t(text);
   if (cls) n.className = cls;
   return n;
 }
-const clock = (t) => new Date(t).toLocaleTimeString("zh-CN", { hour12: false });
+const clock = (t) =>
+  new Date(t).toLocaleTimeString(
+    window.CrabI18n.locale === "zh" ? "zh-CN" : "en-US",
+    { hour12: false },
+  );
 async function api(path, options = {}) {
   const r = await fetch(path, {
     ...options,
@@ -52,7 +61,7 @@ function modelOptions() {
     options = [el("option", "Pi 默认模型")];
   options[0].value = "";
   for (const m of choices) {
-    const o = el("option", `${m.name} · ${m.provider}`);
+    const o = el("option", `${t(m.name)} · ${m.provider}`);
     o.value = JSON.stringify([m.provider, m.id]);
     options.push(o);
   }
@@ -79,28 +88,34 @@ function fillSettings(state) {
   $("tts-enabled").checked = s.ttsEnabled;
   $("voice").value = s.voice;
   $("rate").value = s.rate;
-  $("rate-value").textContent = s.rate;
+  setText("rate-value", s.rate);
   const a = state.audio;
   $("stt-model").disabled = !a.bundledStt;
   $("language").disabled = a.stt === "command" && !a.bundledStt;
-  $("stt-note").textContent = a.bundledStt
-    ? "首次使用新模型需要下载；大模型会增加内存占用与延迟。"
-    : a.stt === "api"
-      ? "当前使用语音 API，识别模型由电脑环境配置。"
-      : "当前自定义命令的模型与语言由电脑端配置。";
+  setText(
+    "stt-note",
+    a.bundledStt
+      ? "首次使用新模型需要下载；大模型会增加内存占用与延迟。"
+      : a.stt === "api"
+        ? "当前使用语音 API，识别模型由电脑环境配置。"
+        : "当前自定义命令的模型与语言由电脑端配置。",
+  );
   $("voice").disabled =
     a.tts === "none" || (a.tts === "command" && !a.bundledTts);
   $("rate").disabled = !a.bundledTts;
-  $("tts-note").textContent = a.bundledTts
-    ? "填写已安装的 macOS 声音名，例如 Tingting。语速为每分钟词数。"
-    : a.tts === "api"
-      ? "声音名需由语音 API 支持；语速仅用于本地 macOS 适配器。"
-      : "自定义语音命令在电脑端配置；关闭播放可仅返回文字。";
+  setText(
+    "tts-note",
+    a.bundledTts
+      ? "填写已安装的 macOS 声音名，例如 Tingting。语速为每分钟词数。"
+      : a.tts === "api"
+        ? "声音名需由语音 API 支持；语速仅用于本地 macOS 适配器。"
+        : "自定义语音命令在电脑端配置；关闭播放可仅返回文字。",
+  );
 }
 function render(state) {
   latest = state;
   $("demo").hidden = !state.demo;
-  $("updated").textContent = `最近同步 ${clock(state.now)}`;
+  setText("updated", `最近同步 ${clock(state.now)}`);
   const current = $("device-filter").value,
     options = [el("option", "所有设备")];
   options[0].value = "";
@@ -170,7 +185,9 @@ function render(state) {
       const user = el("div", undefined, "bubble");
       user.append(
         el("span", "你", "role"),
-        document.createTextNode(t.transcript || "正在上传或识别…"),
+        document.createTextNode(
+          t.transcript || window.CrabI18n.translate("正在上传或识别…"),
+        ),
       );
       box.append(user);
       if (t.reply) {
@@ -233,11 +250,11 @@ function render(state) {
   }
   $("save").disabled = saving || state.devices.some((d) => d.processing);
   if (!saving && $("save").disabled)
-    $("settings-result").textContent = "设备正在处理中，完成后可保存。";
+    setText("settings-result", "设备正在处理中，完成后可保存。");
   else if (
-    $("settings-result").textContent === "设备正在处理中，完成后可保存。"
+    $("settings-result").dataset.uiText === "设备正在处理中，完成后可保存。"
   )
-    $("settings-result").textContent = dirty ? "尚未保存" : "";
+    setText("settings-result", dirty ? "尚未保存" : "");
 }
 async function follow(myGeneration) {
   let delay = 1000;
@@ -245,7 +262,7 @@ async function follow(myGeneration) {
     stream = new AbortController();
     try {
       const response = await api("/api/events", { signal: stream.signal });
-      $("connection").textContent = "● 实时连接";
+      setText("connection", "● 实时连接");
       const reader = response.body.getReader(),
         decoder = new TextDecoder();
       let pending = "";
@@ -276,10 +293,10 @@ async function follow(myGeneration) {
       }
     } catch (e) {
       if (myGeneration !== generation) return;
-      $("connection").textContent = `○ ${e.message}，正在重连`;
+      setText("connection", `○ ${e.message}，正在重连`);
       if (e.message.includes("令牌")) {
         disconnect();
-        $("login-error").textContent = e.message;
+        setText("login-error", e.message);
         return;
       }
       await new Promise((r) => setTimeout(r, delay));
@@ -297,14 +314,14 @@ function disconnect() {
   $("dashboard").hidden = true;
   $("login").hidden = false;
   $("logout").hidden = true;
-  $("connection").textContent = "尚未连接";
+  setText("connection", "尚未连接");
   for (const id of ["turns", "devices", "logs"]) $(id).replaceChildren();
 }
 $("login-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const button = e.submitter;
   button.disabled = true;
-  $("login-error").textContent = "";
+  setText("login-error", "");
   token = $("token").value.trim();
   try {
     const state = await (await api("/api/state")).json();
@@ -318,7 +335,7 @@ $("login-form").addEventListener("submit", async (e) => {
     void follow(++generation);
   } catch (error) {
     token = "";
-    $("login-error").textContent = error.message;
+    setText("login-error", error.message);
   } finally {
     button.disabled = false;
   }
@@ -328,8 +345,8 @@ $("device-filter").addEventListener("change", () => latest && render(latest));
 $("log-filter").addEventListener("change", () => latest && render(latest));
 $("settings-form").addEventListener("input", () => {
   dirty = true;
-  $("rate-value").textContent = $("rate").value;
-  $("settings-result").textContent = "尚未保存";
+  setText("rate-value", $("rate").value);
+  setText("settings-result", "尚未保存");
 });
 $("settings-form").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -353,12 +370,18 @@ $("settings-form").addEventListener("submit", async (e) => {
       body: JSON.stringify(settings),
     });
     dirty = false;
-    $("settings-result").textContent = "已保存，下一轮对话生效。";
+    setText("settings-result", "已保存，下一轮对话生效。");
     render(await (await api("/api/state")).json());
   } catch (error) {
-    $("settings-result").textContent = error.message;
+    setText("settings-result", error.message);
   } finally {
     saving = false;
     $("save").disabled = latest?.devices.some((d) => d.processing) || false;
   }
+});
+
+$("locale-toggle").addEventListener("click", () => {
+  window.CrabI18n.setLocale(window.CrabI18n.locale === "en" ? "zh" : "en");
+  modelOptions();
+  if (latest) render(latest);
 });

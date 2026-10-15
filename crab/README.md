@@ -16,12 +16,14 @@ The verified setup is **StickS3 → macOS bridge → local faster-whisper → Pi
 ## Current verification
 
 - ESP-IDF 6.0.1 StickS3 build passes; application 2.12 MiB, 70% partition space free.
-- Bridge TypeScript compilation and fourteen Node/two Python tests pass, including real Pi SDK against a local test model server, continuous conversation, no enabled tools, Chinese transcript, PCM transport, invalid input, authentication, and cancellation.
+- Bridge TypeScript compilation and seventeen Node/two Python tests pass, including real Pi SDK against a local test model server, continuous conversation, no enabled tools, Chinese transcript, PCM transport, invalid input, authentication, and cancellation.
 - All eight avatar animations compile and run under address/undefined-behavior sanitizers; GIF previews can be regenerated.
 - macOS Chinese TTS produces correct 16 kHz mono PCM on this computer.
 - Connected StickS3 was backed up, flashed, joined Wi-Fi and passed audio loopback, recording-limit, cancellation and reconnection checks. DeepSeek/Pi/STT/TTS ran with real services. The user confirmed accurate near-mouth Chinese recognition, the crab display, reply captions and audible speech in two real conversations. Battery-only runtime and extended soak testing remain pending; see [validation details](VALIDATION.md).
 
 ## Browser console
+
+The interface defaults to English. Use **中文 / English** in the header to switch languages; your choice is remembered in this browser. This changes UI labels/status messages only and preserves conversation content, recognition language, active connections and unsaved settings.
 
 With the bridge running, open **http://127.0.0.1:8787/** (or the computer's LAN address) and sign in with `CRAB_TOKEN` from the local `bridge/.env`. The token stays in page memory, is cleared on refresh/disconnect, and is never embedded in the page or URL.
 

@@ -411,3 +411,16 @@ footer span {
     gap: 6px;
   }
 }
+
+@media (max-width: 600px) {
+  header {
+    height: auto;
+    min-height: 80px;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 20px 24px;
+  }
+  .connection {
+    margin-left: auto;
+  }
+}
