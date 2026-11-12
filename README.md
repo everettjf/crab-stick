@@ -20,7 +20,7 @@ Hold to talk. Release to listen. An independent M5Stack StickS3 firmware with an
 
 **No Muse account, SDK token or subscription required.** You choose the model and speech services; cloud model usage follows the provider's pricing.
 
-[Project website](https://xnu.app/crab-stick/) · [中文使用指南](crab/QUICKSTART.zh-CN.md) · [Technical guide](crab/README.md) · [Hardware validation](crab/VALIDATION.md)
+[Project website](https://atomsprout.com/crab-stick/) · [中文使用指南](crab/QUICKSTART.zh-CN.md) · [Technical guide](crab/README.md) · [Hardware validation](crab/VALIDATION.md)
 
 ## What runs where?
 
