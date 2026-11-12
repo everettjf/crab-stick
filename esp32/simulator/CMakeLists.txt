@@ -142,6 +142,10 @@ else()
     # headers while LVGL itself is compiled.
     target_link_libraries(lvgl PRIVATE ${MUSE_SIM_SDL_TARGET})
     target_compile_definitions(lvgl PRIVATE _POSIX_C_SOURCE=200809L)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        # LVGL's pthread backend uses usleep, which glibc hides in POSIX.1-2008 mode.
+        target_compile_definitions(lvgl PRIVATE _DEFAULT_SOURCE)
+    endif()
 endif()
 
 set(MUSE_COMPONENT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../components/muse")
