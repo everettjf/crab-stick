@@ -4,7 +4,7 @@ Static GitHub Pages source. This is the public project guide, separate from the 
 
 - English by default, with a remembered Chinese toggle.
 - No build, dependencies, analytics, credentials or device API calls.
-- Relative assets support project subpaths, including the account’s inherited Pages domain: `https://atomsprout.com/crab-stick/`.
+- Relative assets support project subpaths, including the account’s inherited Pages domain: `https://asp.run/crab-stick/`.
 - `.github/workflows/pages.yml` checks the site and publishes only this folder from `main`.
 
 Preview from the repository root:

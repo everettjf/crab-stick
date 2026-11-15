@@ -34,8 +34,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: actions/configure-pages@v5
-      - name: Redirect legacy website to AtomSprout
-        run: python3 scripts/redirect-legacy-site.py web crab-stick
       - uses: actions/upload-pages-artifact@v4
         with:
           path: web
